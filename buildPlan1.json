@@ -1,0 +1,196 @@
+{
+  "projectPlan": [
+    {
+      "phase": "Phase 1: Project Setup & Core Foundations",
+      "tasks": [
+        {
+          "id": "T01",
+          "executionOrder": 1,
+          "title": "Initialize Git and Monorepo",
+          "description": "Create repository and npm workspaces for Agent, Viewer, and a shared common package.",
+          "status": "pending"
+        },
+        {
+          "id": "T02",
+          "executionOrder": 2,
+          "title": "Define Node Version and Workspaces",
+          "description": "Add .nvmrc or engines, configure root package.json workspaces, and shared scripts (build, dev, lint).",
+          "status": "pending"
+        },
+        {
+          "id": "T03",
+          "executionOrder": 3,
+          "title": "Add TypeScript, ESLint, Prettier",
+          "description": "Configure tsconfig for all packages, set up ESLint + Prettier for consistent code quality across apps.",
+          "status": "pending"
+        },
+        {
+          "id": "T04",
+          "executionOrder": 4,
+          "title": "Scaffold Electron Apps (Agent & Viewer)",
+          "description": "Create Electron main/preload processes for both apps and minimal renderer shells (Viewer uses React).",
+          "status": "pending"
+        },
+        {
+          "id": "T05",
+          "executionOrder": 5,
+          "title": "Install Core Dependencies",
+          "description": "Install electron, simple-peer, ws, bonjour-service, node-cron, uuid, dotenv, winston, winston-daily-rotate-file, better-sqlite3, node-forge, node-windows (Agent).",
+          "status": "pending"
+        },
+        {
+          "id": "T06",
+          "executionOrder": 6,
+          "title": "Create Shared Common Package",
+          "description": "Define protocol message types, constants (ports, service names), and utilities reused by Agent and Viewer.",
+          "status": "pending"
+        },
+        {
+          "id": "T07",
+          "executionOrder": 7,
+          "title": "Configuration Management",
+          "description": "Implement dotenv + JSON config loader. Define defaults: agentPort, screenshotIntervalMinutes (30), retentionDays (90).",
+          "status": "pending"
+        },
+        {
+          "id": "T08",
+          "executionOrder": 8,
+          "title": "Device Identity Generation",
+          "description": "Generate and persist a stable deviceId (UUIDv4) for each Agent instance.",
+          "status": "pending"
+        },
+        {
+          "id": "T09",
+          "executionOrder": 9,
+          "title": "Pre-Shared Key (PSK) and Trust Material",
+          "description": "Generate a PSK for Viewer authorization. Provide export/import flow and secure storage of the PSK.",
+          "status": "pending"
+        },
+        {
+          "id": "T10",
+          "executionOrder": 10,
+          "title": "TLS Certificates for LAN",
+          "description": "Generate and persist self-signed certificates (RSA-2048) for Agent WSS endpoints using node-forge.",
+          "status": "pending"
+        },
+        {
+          "id": "T11",
+          "executionOrder": 11,
+          "title": "Logging Baseline",
+          "description": "Add Winston logger with daily rotate, redact sensitive fields, and structured JSON logs for both apps.",
+          "status": "pending"
+        },
+        {
+          "id": "T12",
+          "executionOrder": 12,
+          "title": "CI Pipeline (Free)",
+          "description": "Set up GitHub Actions to lint, type-check, and build both apps on push/PR.",
+          "status": "pending"
+        }
+      ]
+    },
+    {
+      "phase": "Phase 2: Agent Application (Client)",
+      "tasks": [
+        {
+          "id": "T13",
+          "executionOrder": 13,
+          "title": "Screen and Audio Capture",
+          "description": "Use desktopCapturer + getUserMedia to capture display video and system audio on Windows.",
+          "status": "pending"
+        },
+        {
+          "id": "T14",
+          "executionOrder": 14,
+          "title": "mDNS Advertisement",
+          "description": "Advertise _monitorme._tcp via bonjour-service with TXT: deviceId, hostname, agentPort.",
+          "status": "pending"
+        },
+        {
+          "id": "T15",
+          "executionOrder": 15,
+          "title": "Agent Signaling Server (WSS)",
+          "description": "Start a secure WebSocket server for signaling and screenshot transfer on the configured port.",
+          "status": "pending"
+        },
+        {
+          "id": "T16",
+          "executionOrder": 16,
+          "title": "Authentication Handshake (PSK + DeviceId)",
+          "description": "Implement challenge-response using the PSK. Throttle attempts and lockout on repeated failures.",
+          "status": "pending"
+        },
+        {
+          "id": "T17",
+          "executionOrder": 17,
+          "title": "WebRTC Negotiation",
+          "description": "Use simple-peer with trickle ICE for LAN-only streams. Prefer VP8/H.264, cap fps/bitrate for stability.",
+          "status": "pending"
+        },
+        {
+          "id": "T18",
+          "executionOrder": 18,
+          "title": "Stream Tracks to Peer",
+          "description": "Attach display video and system audio tracks to the peer connection and start streaming.",
+          "status": "pending"
+        },
+        {
+          "id": "T19",
+          "executionOrder": 19,
+          "title": "Screenshot Capture Utility",
+          "description": "Capture PNG/JPEG with timestamp, deviceId, and quality controls using desktopCapturer.",
+          "status": "pending"
+        },
+        {
+          "id": "T20",
+          "executionOrder": 20,
+          "title": "Screenshot Scheduler",
+          "description": "Schedule screenshot capture every 30 minutes with jitter to avoid synchronized bursts across agents.",
+          "status": "pending"
+        },
+        {
+          "id": "T21",
+          "executionOrder": 21,
+          "title": "Screenshot Transfer Channel",
+          "description": "Send images as binary WS frames with metadata (deviceId, timestamp). Implement ack/retry and backpressure.",
+          "status": "pending"
+        },
+        {
+          "id": "T22",
+          "executionOrder": 22,
+          "title": "Transparency Indicator (Legal)",
+          "description": "Display a subtle on-screen indicator during active live sessions to meet legal/ethical requirements.",
+          "status": "pending"
+        },
+        {
+          "id": "T23",
+          "executionOrder": 23,
+          "title": "Windows Service Installation",
+          "description": "Install Agent as a Windows service using node-windows with auto-start on boot.",
+          "status": "pending"
+        },
+        {
+          "id": "T24",
+          "executionOrder": 24,
+          "title": "Firewall Rules",
+          "description": "Create/verify Windows Defender Firewall inbound rule for the Agent port using netsh (requires admin).",
+          "status": "pending"
+        },
+        {
+          "id": "T25",
+          "executionOrder": 25,
+          "title": "Health Checks & Heartbeats",
+          "description": "Implement periodic heartbeats and reconnection logic with exponential backoff.",
+          "status": "pending"
+        },
+        {
+          "id": "T26",
+          "executionOrder": 26,
+          "title": "Logging & Crash Recovery",
+          "description": "Enhance logging, capture unhandled errors, and auto-restart the Electron/Node process on crash.",
+          "status": "pending"
+        }
+      ]
+    }
+  ]
+}
