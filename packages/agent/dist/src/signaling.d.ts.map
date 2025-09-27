@@ -1,0 +1,1 @@
+{"version":3,"file":"signaling.d.ts","sourceRoot":"","sources":["../../src/signaling.ts"],"names":[],"mappings":"AAOA,KAAK,YAAY,GAAG;IAClB,IAAI,CAAC,EAAE,MAAM,CAAC;IACd,GAAG,CAAC,EAAE,MAAM,CAAC;IACb,UAAU,CAAC,EAAE,MAAM,CAAC;IACpB,WAAW,CAAC,EAAE,MAAM,CAAC;CACtB,CAAC;AAEF,wBAAgB,oBAAoB,CAAC,OAAO,GAAE,YAAiB,cA8C9D"}

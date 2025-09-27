@@ -1,4 +1,5 @@
-import { discoverAgents, type DiscoveredAgent } from './discovery';
+import { discoverAgents, type DiscoveredAgent } from './discovery.js';
+import { connectAndAuth } from './connect.js';
 
 const root = document.getElementById('root')!;
 
@@ -31,6 +32,19 @@ function renderAgents(agents: DiscoveredAgent[]) {
   for (const a of agents) {
     const li = document.createElement('li');
     li.textContent = `${a.deviceId ?? 'unknown'} @ ${a.host}:${a.port}`;
+    const btn = document.createElement('button');
+    btn.textContent = 'Connect';
+    btn.style.marginLeft = '8px';
+    btn.onclick = async () => {
+      const psk = prompt('Enter PSK', 'dev-psk') || 'dev-psk';
+      try {
+        await connectAndAuth(a.host, a.port, psk);
+        alert('Connected and authenticated');
+      } catch (e) {
+        alert('Failed: ' + (e as Error).message);
+      }
+    };
+    li.appendChild(btn);
     list.appendChild(li);
   }
 }

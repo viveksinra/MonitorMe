@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "main": ".electron/main.js",
+  "main": "dist/main.js",
   "scripts": {
     "build:main": "tsc -p .electron/tsconfig.json",
     "build": "npm run build:main && tsc -p tsconfig.json",
@@ -18,7 +18,8 @@
     "@monitorme/common": "*"
   },
   "devDependencies": {
-    "electron": "^30.0.0"
+    "electron": "^30.0.0",
+    "@types/uuid": "^11.0.0"
   }
 }
 

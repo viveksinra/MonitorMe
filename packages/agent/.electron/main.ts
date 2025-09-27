@@ -1,10 +1,12 @@
 import { app, BrowserWindow } from 'electron';
 import { v4 as uuidv4 } from 'uuid';
-import { startAdvertisement } from '../src/advertise';
-import { DEFAULT_AGENT_PORT } from '@monitorme/common';
+import { startAdvertisement } from '../src/advertise.js';
+import { DEFAULT_AGENT_PORT } from '../src/constants.js';
+import { startSignalingServer } from '../src/signaling.js';
 
 let win: BrowserWindow | null = null;
 let stopAdvertise: null | (() => void) = null;
+let stopSignaling: null | (() => void) = null;
 
 async function createWindow() {
   win = new BrowserWindow({
@@ -18,6 +20,7 @@ async function createWindow() {
 
   const deviceId = uuidv4();
   stopAdvertise = startAdvertisement(deviceId, DEFAULT_AGENT_PORT);
+  stopSignaling = startSignalingServer({ port: DEFAULT_AGENT_PORT });
 }
 
 app.whenReady().then(createWindow);
@@ -28,6 +31,7 @@ app.on('window-all-closed', () => {
 
 app.on('before-quit', () => {
   if (stopAdvertise) stopAdvertise();
+  if (stopSignaling) stopSignaling();
 });
 
 

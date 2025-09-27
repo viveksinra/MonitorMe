@@ -1,5 +1,5 @@
 import Bonjour from 'bonjour-service';
-import { SERVICE_PROTOCOL, SERVICE_TYPE } from '@monitorme/common';
+import { SERVICE_PROTOCOL, SERVICE_TYPE } from './constants.js';
 
 export type DiscoveredAgent = {
   host: string;
@@ -8,20 +8,20 @@ export type DiscoveredAgent = {
 };
 
 export function discoverAgents(onUpdate: (agents: DiscoveredAgent[]) => void) {
-  const bonjour = new Bonjour();
+  const bonjour = new (Bonjour as any)();
   const browser = bonjour.find({ type: SERVICE_TYPE, protocol: SERVICE_PROTOCOL as any });
   const agents = new Map<string, DiscoveredAgent>();
 
   const push = () => onUpdate(Array.from(agents.values()));
 
-  browser.on('up', (s) => {
+  browser.on('up', (s: any) => {
     const host = s.host || s.fqdn || 'unknown';
     const port = s.port || 0;
     const deviceId = s.txt?.deviceId as string | undefined;
     agents.set(`${host}:${port}`, { host, port, deviceId });
     push();
   });
-  browser.on('down', (s) => {
+  browser.on('down', (s: any) => {
     const host = s.host || s.fqdn || 'unknown';
     const port = s.port || 0;
     agents.delete(`${host}:${port}`);

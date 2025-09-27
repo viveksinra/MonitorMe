@@ -7,8 +7,8 @@ async function createWindow() {
         height: 800,
         webPreferences: {
             preload: path.join(app.getAppPath(), 'dist/preload.js'),
-            nodeIntegration: false,
-            contextIsolation: true
+            nodeIntegration: true,
+            contextIsolation: false
         }
     });
     await win.loadFile(path.join(app.getAppPath(), '.electron/index.html'));
