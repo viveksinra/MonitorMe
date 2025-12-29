@@ -1,4 +1,4 @@
-import type { ConsentData, AppConfig, MonitoringState, ServerConfig, ConnectionStatus } from '@monitor-me/shared';
+import type { ConsentData, AppConfig, MonitoringState, ServerConfig, ConnectionStatus, ScreenshotCaptureEvent } from '@monitor-me/shared';
 
 export interface ElectronAPI {
   // Consent
@@ -28,6 +28,14 @@ export interface ElectronAPI {
   disconnectFromServer: () => Promise<void>;
   getConnectionStatus: () => Promise<ConnectionStatus>;
   onConnectionStatusChange: (callback: (status: ConnectionStatus) => void) => () => void;
+
+  // Screenshot scheduler
+  startScreenshotScheduler: () => Promise<void>;
+  stopScreenshotScheduler: () => Promise<void>;
+  getSchedulerStatus: () => Promise<boolean>;
+  getLastScreenshotTime: () => Promise<string | null>;
+  captureScreenshotNow: () => Promise<void>;
+  onScreenshotCaptured: (callback: (event: ScreenshotCaptureEvent) => void) => () => void;
 }
 
 declare global {

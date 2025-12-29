@@ -122,6 +122,11 @@ function connectToServer(config, adminData) {
     socket.on(shared_1.ServerEvents.ERROR, (data) => {
         console.error(`[Socket] Server error: ${data.message}`);
     });
+    // Screenshot notifications
+    socket.on(shared_1.ServerEvents.SCREENSHOT_AVAILABLE, (metadata) => {
+        console.log(`[Socket] New screenshot available from: ${metadata.userName}`);
+        mainWindow?.webContents.send(shared_1.IpcChannels.ON_SCREENSHOT_AVAILABLE, metadata);
+    });
 }
 /**
  * Disconnect from the signaling server

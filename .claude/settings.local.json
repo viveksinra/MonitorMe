@@ -4,7 +4,22 @@
       "Bash(npm install:*)",
       "Bash(npm run build:user:*)",
       "Bash(npm run build:admin:*)",
-      "Bash(npm run build:server:*)"
+      "Bash(npm run build:server:*)",
+      "Bash(npm run build:*)",
+      "Bash(npm run start:server:*)",
+      "Bash(timeout:*)",
+      "Bash(ping:*)",
+      "Bash(npm run build:shared:*)",
+      "Bash(npm run dev:user:*)",
+      "Bash(npm run dev:admin:*)",
+      "Bash(set VITE_DEV_SERVER_URL=http://localhost:5173)",
+      "Bash(npx electron .)",
+      "Bash(set VITE_DEV_SERVER_URL=http://localhost:5174)",
+      "Bash(taskkill:*)",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "Bash(set VITE_DEV_SERVER_URL=http://localhost:5175)",
+      "Bash(set VITE_DEV_SERVER_URL=http://localhost:5176)"
     ]
   }
 }

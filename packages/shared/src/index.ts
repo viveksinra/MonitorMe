@@ -7,6 +7,10 @@ export type {
   ServerConfig,
   UserRegistrationData,
   AdminRegistrationData,
+  ScreenshotMetadata,
+  ScreenshotUploadResponse,
+  ScreenshotListResponse,
+  ScreenshotCaptureEvent,
 } from './types';
 
 export {

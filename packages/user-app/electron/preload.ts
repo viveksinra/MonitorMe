@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import { IpcChannels } from '@monitor-me/shared';
-import type { ConsentData, AppConfig, MonitoringState, ServerConfig, ConnectionStatus } from '@monitor-me/shared';
+import type { ConsentData, AppConfig, MonitoringState, ServerConfig, ConnectionStatus, ScreenshotCaptureEvent } from '@monitor-me/shared';
 
 // Expose protected methods that allow the renderer process to use
 // ipcRenderer without exposing the entire object
@@ -66,6 +66,30 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on(IpcChannels.SOCKET_ON_STATUS_CHANGE, handler);
     return () => {
       ipcRenderer.removeListener(IpcChannels.SOCKET_ON_STATUS_CHANGE, handler);
+    };
+  },
+
+  // Screenshot scheduler
+  startScreenshotScheduler: (): Promise<void> =>
+    ipcRenderer.invoke(IpcChannels.START_SCREENSHOT_SCHEDULER),
+
+  stopScreenshotScheduler: (): Promise<void> =>
+    ipcRenderer.invoke(IpcChannels.STOP_SCREENSHOT_SCHEDULER),
+
+  getSchedulerStatus: (): Promise<boolean> =>
+    ipcRenderer.invoke(IpcChannels.GET_SCHEDULER_STATUS),
+
+  getLastScreenshotTime: (): Promise<string | null> =>
+    ipcRenderer.invoke(IpcChannels.GET_LAST_SCREENSHOT_TIME),
+
+  captureScreenshotNow: (): Promise<void> =>
+    ipcRenderer.invoke(IpcChannels.CAPTURE_SCREENSHOT_NOW),
+
+  onScreenshotCaptured: (callback: (event: ScreenshotCaptureEvent) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: ScreenshotCaptureEvent) => callback(data);
+    ipcRenderer.on(IpcChannels.ON_SCREENSHOT_CAPTURED, handler);
+    return () => {
+      ipcRenderer.removeListener(IpcChannels.ON_SCREENSHOT_CAPTURED, handler);
     };
   },
 });

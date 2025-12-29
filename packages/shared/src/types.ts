@@ -194,4 +194,60 @@ export const IpcChannels = {
   GET_USERS: 'users:get',
   ON_USERS_UPDATE: 'users:update',
   REQUEST_VIEW: 'users:request-view',
+
+  // Screenshot scheduler
+  START_SCREENSHOT_SCHEDULER: 'screenshot:start-scheduler',
+  STOP_SCREENSHOT_SCHEDULER: 'screenshot:stop-scheduler',
+  GET_SCHEDULER_STATUS: 'screenshot:scheduler-status',
+  ON_SCREENSHOT_CAPTURED: 'screenshot:captured',
+  CAPTURE_SCREENSHOT_NOW: 'screenshot:capture-now',
+  GET_LAST_SCREENSHOT_TIME: 'screenshot:last-time',
+
+  // Screenshot notifications (admin only)
+  ON_SCREENSHOT_AVAILABLE: 'screenshot:available',
 } as const;
+
+/**
+ * Screenshot metadata stored on server
+ */
+export interface ScreenshotMetadata {
+  /** Unique screenshot ID */
+  id: string;
+  /** User's machine ID */
+  machineId: string;
+  /** User's display name */
+  userName: string;
+  /** Timestamp when screenshot was taken */
+  timestamp: string;
+  /** Filename on server */
+  filename: string;
+  /** File size in bytes */
+  fileSize: number;
+}
+
+/**
+ * Screenshot upload response from server
+ */
+export interface ScreenshotUploadResponse {
+  success: boolean;
+  screenshotId?: string;
+  error?: string;
+}
+
+/**
+ * Response for screenshot list
+ */
+export interface ScreenshotListResponse {
+  screenshots: ScreenshotMetadata[];
+  total: number;
+  hasMore: boolean;
+}
+
+/**
+ * Screenshot capture event for renderer notification
+ */
+export interface ScreenshotCaptureEvent {
+  success: boolean;
+  timestamp: string;
+  error?: string;
+}

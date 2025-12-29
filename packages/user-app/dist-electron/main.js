@@ -44,6 +44,7 @@ const shared_1 = require("@monitor-me/shared");
 const tray_1 = require("./tray");
 const types_1 = require("./types");
 const socket_client_1 = require("./socket-client");
+const screenshot_scheduler_1 = require("./screenshot-scheduler");
 // Generate unique machine ID if not exists
 function getMachineId() {
     let machineId = store.get('machineId');
@@ -197,6 +198,25 @@ function setupIpcHandlers() {
         (0, tray_1.updateTrayState)(tray, currentState);
         mainWindow?.webContents.send(shared_1.IpcChannels.ON_STATE_CHANGE, currentState);
     });
+    // Screenshot scheduler handlers
+    electron_1.ipcMain.handle(shared_1.IpcChannels.START_SCREENSHOT_SCHEDULER, () => {
+        const consent = store.get('consent');
+        if (consent?.screenshotConsent) {
+            (0, screenshot_scheduler_1.startScheduler)();
+        }
+    });
+    electron_1.ipcMain.handle(shared_1.IpcChannels.STOP_SCREENSHOT_SCHEDULER, () => {
+        (0, screenshot_scheduler_1.stopScheduler)();
+    });
+    electron_1.ipcMain.handle(shared_1.IpcChannels.GET_SCHEDULER_STATUS, () => {
+        return (0, screenshot_scheduler_1.isSchedulerRunning)();
+    });
+    electron_1.ipcMain.handle(shared_1.IpcChannels.GET_LAST_SCREENSHOT_TIME, () => {
+        return (0, screenshot_scheduler_1.getLastCaptureTime)();
+    });
+    electron_1.ipcMain.handle(shared_1.IpcChannels.CAPTURE_SCREENSHOT_NOW, async () => {
+        await (0, screenshot_scheduler_1.captureNow)();
+    });
 }
 // Initialize app
 electron_1.app.whenReady().then(() => {
@@ -210,6 +230,15 @@ electron_1.app.whenReady().then(() => {
     // Restore last monitoring state
     currentState = store.get('monitoringState');
     (0, tray_1.updateTrayState)(tray, currentState);
+    // Initialize screenshot scheduler
+    if (mainWindow) {
+        (0, screenshot_scheduler_1.initScheduler)(mainWindow, store, tray);
+    }
+    // Auto-start scheduler if consent exists
+    const consent = store.get('consent');
+    if (consent?.screenshotConsent) {
+        (0, screenshot_scheduler_1.startScheduler)();
+    }
     electron_1.app.on('activate', () => {
         if (electron_1.BrowserWindow.getAllWindows().length === 0) {
             createWindow();
@@ -223,6 +252,7 @@ electron_1.app.on('window-all-closed', () => {
 });
 electron_1.app.on('before-quit', () => {
     (0, types_1.setAppQuitting)(true);
+    (0, screenshot_scheduler_1.stopScheduler)();
     (0, tray_1.destroyTray)(tray);
 });
 //# sourceMappingURL=main.js.map

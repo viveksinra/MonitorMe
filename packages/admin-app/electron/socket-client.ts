@@ -8,6 +8,7 @@ import {
   type ServerConfig,
   type UserInfo,
   type AdminRegistrationData,
+  type ScreenshotMetadata,
 } from '@monitor-me/shared';
 
 let socket: Socket | null = null;
@@ -145,6 +146,12 @@ export function connectToServer(
 
   socket.on(ServerEvents.ERROR, (data: { message: string }) => {
     console.error(`[Socket] Server error: ${data.message}`);
+  });
+
+  // Screenshot notifications
+  socket.on(ServerEvents.SCREENSHOT_AVAILABLE, (metadata: ScreenshotMetadata) => {
+    console.log(`[Socket] New screenshot available from: ${metadata.userName}`);
+    mainWindow?.webContents.send(IpcChannels.ON_SCREENSHOT_AVAILABLE, metadata);
   });
 }
 

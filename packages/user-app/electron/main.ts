@@ -21,6 +21,14 @@ import {
   sendStateUpdate,
   setMainWindow,
 } from './socket-client';
+import {
+  initScheduler,
+  startScheduler,
+  stopScheduler,
+  isSchedulerRunning,
+  getLastCaptureTime,
+  captureNow,
+} from './screenshot-scheduler';
 
 // Generate unique machine ID if not exists
 function getMachineId(): string {
@@ -199,6 +207,30 @@ function setupIpcHandlers(): void {
     updateTrayState(tray, currentState);
     mainWindow?.webContents.send(IpcChannels.ON_STATE_CHANGE, currentState);
   });
+
+  // Screenshot scheduler handlers
+  ipcMain.handle(IpcChannels.START_SCREENSHOT_SCHEDULER, (): void => {
+    const consent = store.get('consent') as ConsentData | null;
+    if (consent?.screenshotConsent) {
+      startScheduler();
+    }
+  });
+
+  ipcMain.handle(IpcChannels.STOP_SCREENSHOT_SCHEDULER, (): void => {
+    stopScheduler();
+  });
+
+  ipcMain.handle(IpcChannels.GET_SCHEDULER_STATUS, (): boolean => {
+    return isSchedulerRunning();
+  });
+
+  ipcMain.handle(IpcChannels.GET_LAST_SCREENSHOT_TIME, (): string | null => {
+    return getLastCaptureTime();
+  });
+
+  ipcMain.handle(IpcChannels.CAPTURE_SCREENSHOT_NOW, async (): Promise<void> => {
+    await captureNow();
+  });
 }
 
 // Initialize app
@@ -216,6 +248,17 @@ app.whenReady().then(() => {
   currentState = store.get('monitoringState') as MonitoringState;
   updateTrayState(tray, currentState);
 
+  // Initialize screenshot scheduler
+  if (mainWindow) {
+    initScheduler(mainWindow, store as unknown as Store<Record<string, unknown>>, tray);
+  }
+
+  // Auto-start scheduler if consent exists
+  const consent = store.get('consent') as ConsentData | null;
+  if (consent?.screenshotConsent) {
+    startScheduler();
+  }
+
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       createWindow();
@@ -231,5 +274,6 @@ app.on('window-all-closed', () => {
 
 app.on('before-quit', () => {
   setAppQuitting(true);
+  stopScheduler();
   destroyTray(tray);
 });

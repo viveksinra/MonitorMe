@@ -6,6 +6,8 @@ exports.destroyTray = destroyTray;
 const electron_1 = require("electron");
 const shared_1 = require("@monitor-me/shared");
 const types_1 = require("./types");
+// Store the showWindow callback for menu rebuilding
+let showWindowCallback = null;
 /**
  * Create a simple colored icon as nativeImage
  * In production, you'd use actual icon files
@@ -80,6 +82,8 @@ function buildContextMenu(state, showWindow) {
  * Create the system tray icon
  */
 function createTray(showWindow) {
+    // Store the callback for later use in updateTrayState
+    showWindowCallback = showWindow;
     const icon = createColoredIcon(shared_1.MonitoringState.IDLE);
     const tray = new electron_1.Tray(icon);
     tray.setToolTip(`${shared_1.APP_NAME} - ${shared_1.StatusMessages[shared_1.MonitoringState.IDLE]}`);
@@ -97,9 +101,10 @@ function updateTrayState(tray, state) {
     const icon = createColoredIcon(state);
     tray.setImage(icon);
     tray.setToolTip(`${shared_1.APP_NAME} - ${shared_1.StatusMessages[state]}`);
-    // We need to rebuild the menu to update the pause/resume option
-    // Store the showWindow callback when creating the tray
-    // For now, we'll emit an event to get the window reference
+    // Rebuild the context menu to update the pause/resume label
+    if (showWindowCallback) {
+        tray.setContextMenu(buildContextMenu(state, showWindowCallback));
+    }
 }
 /**
  * Destroy the tray icon
@@ -108,5 +113,7 @@ function destroyTray(tray) {
     if (tray) {
         tray.destroy();
     }
+    // Clear the stored callback
+    showWindowCallback = null;
 }
 //# sourceMappingURL=tray.js.map

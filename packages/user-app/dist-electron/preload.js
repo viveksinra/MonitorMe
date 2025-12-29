@@ -39,5 +39,18 @@ electron_1.contextBridge.exposeInMainWorld('electronAPI', {
             electron_1.ipcRenderer.removeListener(shared_1.IpcChannels.SOCKET_ON_STATUS_CHANGE, handler);
         };
     },
+    // Screenshot scheduler
+    startScreenshotScheduler: () => electron_1.ipcRenderer.invoke(shared_1.IpcChannels.START_SCREENSHOT_SCHEDULER),
+    stopScreenshotScheduler: () => electron_1.ipcRenderer.invoke(shared_1.IpcChannels.STOP_SCREENSHOT_SCHEDULER),
+    getSchedulerStatus: () => electron_1.ipcRenderer.invoke(shared_1.IpcChannels.GET_SCHEDULER_STATUS),
+    getLastScreenshotTime: () => electron_1.ipcRenderer.invoke(shared_1.IpcChannels.GET_LAST_SCREENSHOT_TIME),
+    captureScreenshotNow: () => electron_1.ipcRenderer.invoke(shared_1.IpcChannels.CAPTURE_SCREENSHOT_NOW),
+    onScreenshotCaptured: (callback) => {
+        const handler = (_event, data) => callback(data);
+        electron_1.ipcRenderer.on(shared_1.IpcChannels.ON_SCREENSHOT_CAPTURED, handler);
+        return () => {
+            electron_1.ipcRenderer.removeListener(shared_1.IpcChannels.ON_SCREENSHOT_CAPTURED, handler);
+        };
+    },
 });
 //# sourceMappingURL=preload.js.map

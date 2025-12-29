@@ -2,6 +2,9 @@ import { Tray, Menu, nativeImage, app, ipcMain } from 'electron';
 import { MonitoringState, StatusMessages, IpcChannels, APP_NAME } from '@monitor-me/shared';
 import { setAppQuitting } from './types';
 
+// Store the showWindow callback for menu rebuilding
+let showWindowCallback: (() => void) | null = null;
+
 /**
  * Create a simple colored icon as nativeImage
  * In production, you'd use actual icon files
@@ -86,6 +89,9 @@ function buildContextMenu(
  * Create the system tray icon
  */
 export function createTray(showWindow: () => void): Tray {
+  // Store the callback for later use in updateTrayState
+  showWindowCallback = showWindow;
+
   const icon = createColoredIcon(MonitoringState.IDLE);
   const tray = new Tray(icon);
 
@@ -109,9 +115,10 @@ export function updateTrayState(tray: Tray | null, state: MonitoringState): void
   tray.setImage(icon);
   tray.setToolTip(`${APP_NAME} - ${StatusMessages[state]}`);
 
-  // We need to rebuild the menu to update the pause/resume option
-  // Store the showWindow callback when creating the tray
-  // For now, we'll emit an event to get the window reference
+  // Rebuild the context menu to update the pause/resume label
+  if (showWindowCallback) {
+    tray.setContextMenu(buildContextMenu(state, showWindowCallback));
+  }
 }
 
 /**
@@ -121,4 +128,6 @@ export function destroyTray(tray: Tray | null): void {
   if (tray) {
     tray.destroy();
   }
+  // Clear the stored callback
+  showWindowCallback = null;
 }

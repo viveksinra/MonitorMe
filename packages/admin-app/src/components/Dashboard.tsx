@@ -5,6 +5,7 @@ import {
   DEFAULT_SERVER_CONFIG,
 } from '@monitor-me/shared';
 import type { UserInfo, ServerConfig } from '@monitor-me/shared';
+import ScreenshotTimeline from './ScreenshotTimeline';
 
 interface DashboardProps {
   onLogout: () => void;
@@ -18,6 +19,7 @@ export default function Dashboard({ onLogout }: DashboardProps) {
     ConnectionStatus.DISCONNECTED
   );
   const [isConnecting, setIsConnecting] = useState(false);
+  const [selectedUserForScreenshots, setSelectedUserForScreenshots] = useState<UserInfo | null>(null);
 
   useEffect(() => {
     loadServerConfig();
@@ -464,7 +466,13 @@ export default function Dashboard({ onLogout }: DashboardProps) {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {new Date(user.lastSeen).toLocaleString()}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm space-x-2">
+                        <button
+                          onClick={() => setSelectedUserForScreenshots(user)}
+                          className="btn-secondary text-xs"
+                        >
+                          Screenshots
+                        </button>
                         <button
                           onClick={() => handleViewScreen(user.id)}
                           className="btn-primary text-xs"
@@ -481,6 +489,16 @@ export default function Dashboard({ onLogout }: DashboardProps) {
           )}
         </div>
       </main>
+
+      {/* Screenshot Timeline Modal */}
+      {selectedUserForScreenshots && (
+        <ScreenshotTimeline
+          machineId={selectedUserForScreenshots.machineId}
+          userName={selectedUserForScreenshots.name}
+          serverConfig={{ host: serverHost, port: serverPort }}
+          onClose={() => setSelectedUserForScreenshots(null)}
+        />
+      )}
     </div>
   );
 }

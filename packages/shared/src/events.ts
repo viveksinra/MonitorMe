@@ -1,4 +1,4 @@
-import type { MonitoringState, UserInfo, UserRegistrationData, AdminRegistrationData } from './types';
+import type { MonitoringState, UserInfo, UserRegistrationData, AdminRegistrationData, ScreenshotMetadata } from './types';
 
 /**
  * Socket event names for client -> server communication
@@ -36,6 +36,8 @@ export const ServerEvents = {
   REGISTERED: 'registered',
   /** Error occurred */
   ERROR: 'error',
+  /** New screenshot available (sent to admins) */
+  SCREENSHOT_AVAILABLE: 'screenshot:available',
 } as const;
 
 /**
@@ -61,6 +63,7 @@ export interface ServerToClientEvents {
   [ServerEvents.VIEW_CANCELLED]: (data: { adminId: string }) => void;
   [ServerEvents.REGISTERED]: (data: { id: string }) => void;
   [ServerEvents.ERROR]: (data: { message: string }) => void;
+  [ServerEvents.SCREENSHOT_AVAILABLE]: (data: ScreenshotMetadata) => void;
 }
 
 /**
