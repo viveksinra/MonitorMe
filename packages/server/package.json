@@ -1,0 +1,20 @@
+{
+  "name": "@monitor-me/server",
+  "version": "1.0.0",
+  "description": "MonitorMe Signaling Server - WebSocket server for LAN communication",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsc --watch & nodemon dist/index.js"
+  },
+  "dependencies": {
+    "@monitor-me/shared": "*",
+    "socket.io": "^4.7.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "nodemon": "^3.0.2",
+    "typescript": "^5.3.2"
+  }
+}

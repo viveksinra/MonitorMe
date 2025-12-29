@@ -1,22 +1,34 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const electron_1 = require("electron");
-// Admin app preload script
-// More IPC methods will be added in Phase 2 when signaling server is implemented
+const shared_1 = require("@monitor-me/shared");
+// Expose protected methods that allow the renderer process to use
+// ipcRenderer without exposing the entire object
 electron_1.contextBridge.exposeInMainWorld('electronAPI', {
-    // Placeholder for future IPC methods
-    // These will be implemented in Phase 2 with the signaling server
-    // Get list of connected users
-    getUsers: () => Promise.resolve([]),
-    // Request to view a user's screen
-    requestScreenView: (userId) => {
-        console.log('Screen view requested for:', userId);
-        return Promise.resolve();
+    // Server config
+    getServerConfig: () => electron_1.ipcRenderer.invoke(shared_1.IpcChannels.GET_SERVER_CONFIG),
+    setServerConfig: (config) => electron_1.ipcRenderer.invoke(shared_1.IpcChannels.SET_SERVER_CONFIG, config),
+    // Socket connection
+    connectToServer: (config) => electron_1.ipcRenderer.invoke(shared_1.IpcChannels.SOCKET_CONNECT, config),
+    disconnectFromServer: () => electron_1.ipcRenderer.invoke(shared_1.IpcChannels.SOCKET_DISCONNECT),
+    getConnectionStatus: () => electron_1.ipcRenderer.invoke(shared_1.IpcChannels.SOCKET_STATUS),
+    onConnectionStatusChange: (callback) => {
+        const handler = (_event, status) => callback(status);
+        electron_1.ipcRenderer.on(shared_1.IpcChannels.SOCKET_ON_STATUS_CHANGE, handler);
+        return () => {
+            electron_1.ipcRenderer.removeListener(shared_1.IpcChannels.SOCKET_ON_STATUS_CHANGE, handler);
+        };
     },
-    // Disconnect from viewing a screen
-    disconnectScreenView: (userId) => {
-        console.log('Disconnecting from:', userId);
-        return Promise.resolve();
+    // Users
+    getUsers: () => electron_1.ipcRenderer.invoke(shared_1.IpcChannels.GET_USERS),
+    onUsersUpdate: (callback) => {
+        const handler = (_event, users) => callback(users);
+        electron_1.ipcRenderer.on(shared_1.IpcChannels.ON_USERS_UPDATE, handler);
+        return () => {
+            electron_1.ipcRenderer.removeListener(shared_1.IpcChannels.ON_USERS_UPDATE, handler);
+        };
     },
+    // View requests
+    requestScreenView: (userId) => electron_1.ipcRenderer.invoke(shared_1.IpcChannels.REQUEST_VIEW, userId),
 });
 //# sourceMappingURL=preload.js.map

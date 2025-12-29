@@ -25,5 +25,19 @@ electron_1.contextBridge.exposeInMainWorld('electronAPI', {
     // Window controls
     minimizeToTray: () => electron_1.ipcRenderer.send(shared_1.IpcChannels.MINIMIZE_TO_TRAY),
     quitApp: () => electron_1.ipcRenderer.send(shared_1.IpcChannels.QUIT_APP),
+    // Server config
+    getServerConfig: () => electron_1.ipcRenderer.invoke(shared_1.IpcChannels.GET_SERVER_CONFIG),
+    setServerConfig: (config) => electron_1.ipcRenderer.invoke(shared_1.IpcChannels.SET_SERVER_CONFIG, config),
+    // Socket connection
+    connectToServer: (config) => electron_1.ipcRenderer.invoke(shared_1.IpcChannels.SOCKET_CONNECT, config),
+    disconnectFromServer: () => electron_1.ipcRenderer.invoke(shared_1.IpcChannels.SOCKET_DISCONNECT),
+    getConnectionStatus: () => electron_1.ipcRenderer.invoke(shared_1.IpcChannels.SOCKET_STATUS),
+    onConnectionStatusChange: (callback) => {
+        const handler = (_event, status) => callback(status);
+        electron_1.ipcRenderer.on(shared_1.IpcChannels.SOCKET_ON_STATUS_CHANGE, handler);
+        return () => {
+            electron_1.ipcRenderer.removeListener(shared_1.IpcChannels.SOCKET_ON_STATUS_CHANGE, handler);
+        };
+    },
 });
 //# sourceMappingURL=preload.js.map

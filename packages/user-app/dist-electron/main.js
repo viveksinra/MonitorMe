@@ -38,10 +38,21 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const electron_1 = require("electron");
 const path = __importStar(require("path"));
+const crypto_1 = require("crypto");
 const electron_store_1 = __importDefault(require("electron-store"));
 const shared_1 = require("@monitor-me/shared");
 const tray_1 = require("./tray");
 const types_1 = require("./types");
+const socket_client_1 = require("./socket-client");
+// Generate unique machine ID if not exists
+function getMachineId() {
+    let machineId = store.get('machineId');
+    if (!machineId) {
+        machineId = (0, crypto_1.randomUUID)();
+        store.set('machineId', machineId);
+    }
+    return machineId;
+}
 // Initialize electron-store
 const store = new electron_store_1.default({
     name: 'monitor-me-user',
@@ -59,7 +70,9 @@ const store = new electron_store_1.default({
             userName: '',
             machineId: '',
         },
+        serverConfig: shared_1.DEFAULT_SERVER_CONFIG,
         monitoringState: shared_1.MonitoringState.IDLE,
+        machineId: '',
     },
 });
 let mainWindow = null;
@@ -102,7 +115,10 @@ function createWindow() {
     });
     mainWindow.on('closed', () => {
         mainWindow = null;
+        (0, socket_client_1.setMainWindow)(null);
     });
+    // Set main window reference for socket client
+    (0, socket_client_1.setMainWindow)(mainWindow);
 }
 // Set up IPC handlers
 function setupIpcHandlers() {
@@ -134,6 +150,31 @@ function setupIpcHandlers() {
         store.set('monitoringState', state);
         (0, tray_1.updateTrayState)(tray, state);
         mainWindow?.webContents.send(shared_1.IpcChannels.ON_STATE_CHANGE, state);
+        // Send state update to server
+        (0, socket_client_1.sendStateUpdate)(state);
+    });
+    // Server config handlers
+    electron_1.ipcMain.handle(shared_1.IpcChannels.GET_SERVER_CONFIG, () => {
+        return store.get('serverConfig');
+    });
+    electron_1.ipcMain.handle(shared_1.IpcChannels.SET_SERVER_CONFIG, (_event, config) => {
+        store.set('serverConfig', config);
+    });
+    // Socket connection handlers
+    electron_1.ipcMain.handle(shared_1.IpcChannels.SOCKET_CONNECT, (_event, config) => {
+        const appConfig = store.get('config');
+        const machineId = getMachineId();
+        (0, socket_client_1.connectToServer)(config, {
+            name: appConfig.userName || 'Unknown User',
+            machineId,
+            state: currentState,
+        });
+    });
+    electron_1.ipcMain.handle(shared_1.IpcChannels.SOCKET_DISCONNECT, () => {
+        (0, socket_client_1.disconnectFromServer)();
+    });
+    electron_1.ipcMain.handle(shared_1.IpcChannels.SOCKET_STATUS, () => {
+        return (0, socket_client_1.getConnectionStatus)();
     });
     // Window controls
     electron_1.ipcMain.on(shared_1.IpcChannels.MINIMIZE_TO_TRAY, () => {

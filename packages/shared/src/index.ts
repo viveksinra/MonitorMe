@@ -4,6 +4,9 @@ export type {
   WorkHours,
   AppConfig,
   UserInfo,
+  ServerConfig,
+  UserRegistrationData,
+  AdminRegistrationData,
 } from './types';
 
 export {
@@ -11,7 +14,22 @@ export {
   TrayIconColors,
   StatusMessages,
   IpcChannels,
+  DEFAULT_SERVER_CONFIG,
+  ConnectionStatus,
+  ClientRole,
 } from './types';
+
+// Socket Events
+export type {
+  ClientToServerEvents,
+  ServerToClientEvents,
+  SocketEvents,
+} from './events';
+
+export {
+  ClientEvents,
+  ServerEvents,
+} from './events';
 
 // Constants
 export {

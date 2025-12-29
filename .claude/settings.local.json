@@ -3,7 +3,8 @@
     "allow": [
       "Bash(npm install:*)",
       "Bash(npm run build:user:*)",
-      "Bash(npm run build:admin:*)"
+      "Bash(npm run build:admin:*)",
+      "Bash(npm run build:server:*)"
     ]
   }
 }

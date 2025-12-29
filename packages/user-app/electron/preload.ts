@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import { IpcChannels } from '@monitor-me/shared';
-import type { ConsentData, AppConfig, MonitoringState } from '@monitor-me/shared';
+import type { ConsentData, AppConfig, MonitoringState, ServerConfig, ConnectionStatus } from '@monitor-me/shared';
 
 // Expose protected methods that allow the renderer process to use
 // ipcRenderer without exposing the entire object
@@ -43,4 +43,29 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   quitApp: (): void =>
     ipcRenderer.send(IpcChannels.QUIT_APP),
+
+  // Server config
+  getServerConfig: (): Promise<ServerConfig> =>
+    ipcRenderer.invoke(IpcChannels.GET_SERVER_CONFIG),
+
+  setServerConfig: (config: ServerConfig): Promise<void> =>
+    ipcRenderer.invoke(IpcChannels.SET_SERVER_CONFIG, config),
+
+  // Socket connection
+  connectToServer: (config: ServerConfig): Promise<void> =>
+    ipcRenderer.invoke(IpcChannels.SOCKET_CONNECT, config),
+
+  disconnectFromServer: (): Promise<void> =>
+    ipcRenderer.invoke(IpcChannels.SOCKET_DISCONNECT),
+
+  getConnectionStatus: (): Promise<ConnectionStatus> =>
+    ipcRenderer.invoke(IpcChannels.SOCKET_STATUS),
+
+  onConnectionStatusChange: (callback: (status: ConnectionStatus) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, status: ConnectionStatus) => callback(status);
+    ipcRenderer.on(IpcChannels.SOCKET_ON_STATUS_CHANGE, handler);
+    return () => {
+      ipcRenderer.removeListener(IpcChannels.SOCKET_ON_STATUS_CHANGE, handler);
+    };
+  },
 });

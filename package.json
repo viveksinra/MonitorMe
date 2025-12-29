@@ -9,8 +9,11 @@
   "scripts": {
     "dev:user": "npm run dev -w @monitor-me/user-app",
     "dev:admin": "npm run dev -w @monitor-me/admin-app",
-    "build": "npm run build -w @monitor-me/shared && npm run build -w @monitor-me/user-app && npm run build -w @monitor-me/admin-app",
+    "dev:server": "npm run dev -w @monitor-me/server",
+    "start:server": "npm run start -w @monitor-me/server",
+    "build": "npm run build -w @monitor-me/shared && npm run build -w @monitor-me/server && npm run build -w @monitor-me/user-app && npm run build -w @monitor-me/admin-app",
     "build:shared": "npm run build -w @monitor-me/shared",
+    "build:server": "npm run build -w @monitor-me/server",
     "build:user": "npm run build -w @monitor-me/user-app",
     "build:admin": "npm run build -w @monitor-me/admin-app",
     "lint": "eslint packages --ext .ts,.tsx",

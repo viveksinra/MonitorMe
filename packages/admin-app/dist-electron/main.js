@@ -32,10 +32,23 @@ var __importStar = (this && this.__importStar) || (function () {
         return result;
     };
 })();
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 const electron_1 = require("electron");
 const path = __importStar(require("path"));
+const electron_store_1 = __importDefault(require("electron-store"));
 const shared_1 = require("@monitor-me/shared");
+const socket_client_1 = require("./socket-client");
+// Initialize electron-store
+const store = new electron_store_1.default({
+    name: 'monitor-me-admin',
+    defaults: {
+        serverConfig: shared_1.DEFAULT_SERVER_CONFIG,
+        adminName: 'Admin',
+    },
+});
 let mainWindow = null;
 function createWindow() {
     const { width, height, minWidth, minHeight } = shared_1.WINDOW_CONFIG.ADMIN_APP;
@@ -67,10 +80,42 @@ function createWindow() {
     });
     mainWindow.on('closed', () => {
         mainWindow = null;
+        (0, socket_client_1.setMainWindow)(null);
+    });
+    // Set main window reference for socket client
+    (0, socket_client_1.setMainWindow)(mainWindow);
+}
+// Set up IPC handlers
+function setupIpcHandlers() {
+    // Server config handlers
+    electron_1.ipcMain.handle(shared_1.IpcChannels.GET_SERVER_CONFIG, () => {
+        return store.get('serverConfig');
+    });
+    electron_1.ipcMain.handle(shared_1.IpcChannels.SET_SERVER_CONFIG, (_event, config) => {
+        store.set('serverConfig', config);
+    });
+    // Socket connection handlers
+    electron_1.ipcMain.handle(shared_1.IpcChannels.SOCKET_CONNECT, (_event, config) => {
+        const adminName = store.get('adminName');
+        (0, socket_client_1.connectToServer)(config, { name: adminName });
+    });
+    electron_1.ipcMain.handle(shared_1.IpcChannels.SOCKET_DISCONNECT, () => {
+        (0, socket_client_1.disconnectFromServer)();
+    });
+    electron_1.ipcMain.handle(shared_1.IpcChannels.SOCKET_STATUS, () => {
+        return (0, socket_client_1.getConnectionStatus)();
+    });
+    // Users handlers
+    electron_1.ipcMain.handle(shared_1.IpcChannels.GET_USERS, () => {
+        return (0, socket_client_1.getUsers)();
+    });
+    electron_1.ipcMain.handle(shared_1.IpcChannels.REQUEST_VIEW, (_event, userId) => {
+        (0, socket_client_1.requestViewUser)(userId);
     });
 }
 // Initialize app
 electron_1.app.whenReady().then(() => {
+    setupIpcHandlers();
     createWindow();
     electron_1.app.on('activate', () => {
         if (electron_1.BrowserWindow.getAllWindows().length === 0) {
@@ -82,5 +127,8 @@ electron_1.app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') {
         electron_1.app.quit();
     }
+});
+electron_1.app.on('before-quit', () => {
+    (0, socket_client_1.disconnectFromServer)();
 });
 //# sourceMappingURL=main.js.map

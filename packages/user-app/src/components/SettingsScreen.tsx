@@ -1,6 +1,12 @@
 import { useState, useEffect } from 'react';
-import { DAY_LABELS, DEFAULT_WORK_HOURS, DEFAULT_SCREENSHOT_INTERVAL } from '@monitor-me/shared';
-import type { AppConfig, WorkHours } from '@monitor-me/shared';
+import {
+  DAY_LABELS,
+  DEFAULT_WORK_HOURS,
+  DEFAULT_SCREENSHOT_INTERVAL,
+  DEFAULT_SERVER_CONFIG,
+  ConnectionStatus,
+} from '@monitor-me/shared';
+import type { AppConfig, WorkHours, ServerConfig } from '@monitor-me/shared';
 
 interface SettingsScreenProps {
   onBack: () => void;
@@ -20,8 +26,24 @@ export default function SettingsScreen({ onBack }: SettingsScreenProps) {
   const [screenshotInterval, setScreenshotInterval] = useState(DEFAULT_SCREENSHOT_INTERVAL);
   const [userName, setUserName] = useState('');
 
+  // Server connection state
+  const [serverHost, setServerHost] = useState(DEFAULT_SERVER_CONFIG.host);
+  const [serverPort, setServerPort] = useState(DEFAULT_SERVER_CONFIG.port);
+  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>(ConnectionStatus.DISCONNECTED);
+  const [isConnecting, setIsConnecting] = useState(false);
+
   useEffect(() => {
     loadConfig();
+    loadServerConfig();
+    loadConnectionStatus();
+
+    // Subscribe to connection status changes
+    const unsubscribe = window.electronAPI.onConnectionStatusChange((status) => {
+      setConnectionStatus(status);
+      setIsConnecting(status === ConnectionStatus.CONNECTING);
+    });
+
+    return unsubscribe;
   }, []);
 
   const loadConfig = async () => {
@@ -37,6 +59,73 @@ export default function SettingsScreen({ onBack }: SettingsScreenProps) {
       setUserName(loadedConfig.userName || '');
     } catch (error) {
       console.error('Error loading config:', error);
+    }
+  };
+
+  const loadServerConfig = async () => {
+    try {
+      const config = await window.electronAPI.getServerConfig();
+      setServerHost(config.host);
+      setServerPort(config.port);
+    } catch (error) {
+      console.error('Error loading server config:', error);
+    }
+  };
+
+  const loadConnectionStatus = async () => {
+    try {
+      const status = await window.electronAPI.getConnectionStatus();
+      setConnectionStatus(status);
+    } catch (error) {
+      console.error('Error loading connection status:', error);
+    }
+  };
+
+  const handleConnect = async () => {
+    setIsConnecting(true);
+    try {
+      // Save server config first
+      const serverConfig: ServerConfig = { host: serverHost, port: serverPort };
+      await window.electronAPI.setServerConfig(serverConfig);
+      // Then connect
+      await window.electronAPI.connectToServer(serverConfig);
+    } catch (error) {
+      console.error('Error connecting to server:', error);
+      setIsConnecting(false);
+    }
+  };
+
+  const handleDisconnect = async () => {
+    try {
+      await window.electronAPI.disconnectFromServer();
+    } catch (error) {
+      console.error('Error disconnecting from server:', error);
+    }
+  };
+
+  const getConnectionStatusColor = () => {
+    switch (connectionStatus) {
+      case ConnectionStatus.CONNECTED:
+        return 'bg-green-500';
+      case ConnectionStatus.CONNECTING:
+        return 'bg-yellow-500 animate-pulse';
+      case ConnectionStatus.ERROR:
+        return 'bg-red-500';
+      default:
+        return 'bg-gray-400';
+    }
+  };
+
+  const getConnectionStatusText = () => {
+    switch (connectionStatus) {
+      case ConnectionStatus.CONNECTED:
+        return 'Connected';
+      case ConnectionStatus.CONNECTING:
+        return 'Connecting...';
+      case ConnectionStatus.ERROR:
+        return 'Connection Error';
+      default:
+        return 'Disconnected';
     }
   };
 
@@ -108,6 +197,63 @@ export default function SettingsScreen({ onBack }: SettingsScreenProps) {
           />
           <p className="text-xs text-gray-500 mt-2">
             This will be displayed to the admin
+          </p>
+        </div>
+
+        {/* Server Connection */}
+        <div className="card p-6 mb-4">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-semibold text-gray-900">Server Connection</h3>
+            <div className="flex items-center gap-2">
+              <div className={`w-3 h-3 rounded-full ${getConnectionStatusColor()}`}></div>
+              <span className="text-sm text-gray-600">{getConnectionStatusText()}</span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-3 mb-4">
+            <div className="col-span-2">
+              <label className="block text-sm text-gray-600 mb-1">Server IP</label>
+              <input
+                type="text"
+                value={serverHost}
+                onChange={(e) => setServerHost(e.target.value)}
+                placeholder="192.168.1.100"
+                disabled={connectionStatus === ConnectionStatus.CONNECTED}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+              />
+            </div>
+            <div>
+              <label className="block text-sm text-gray-600 mb-1">Port</label>
+              <input
+                type="number"
+                value={serverPort}
+                onChange={(e) => setServerPort(Number(e.target.value))}
+                placeholder="3000"
+                disabled={connectionStatus === ConnectionStatus.CONNECTED}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+              />
+            </div>
+          </div>
+
+          {connectionStatus === ConnectionStatus.CONNECTED ? (
+            <button
+              onClick={handleDisconnect}
+              className="w-full px-4 py-2 bg-red-100 text-red-700 rounded-lg font-medium hover:bg-red-200 transition-colors"
+            >
+              Disconnect
+            </button>
+          ) : (
+            <button
+              onClick={handleConnect}
+              disabled={isConnecting || !serverHost}
+              className="w-full btn-primary disabled:opacity-50"
+            >
+              {isConnecting ? 'Connecting...' : 'Connect to Server'}
+            </button>
+          )}
+
+          <p className="text-xs text-gray-500 mt-2">
+            Enter the IP address shown when the server starts
           </p>
         </div>
 

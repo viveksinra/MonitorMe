@@ -97,6 +97,62 @@ export interface UserInfo {
 }
 
 /**
+ * Server configuration for socket connection
+ */
+export interface ServerConfig {
+  /** Server host/IP address */
+  host: string;
+  /** Server port */
+  port: number;
+}
+
+/**
+ * Default server configuration
+ */
+export const DEFAULT_SERVER_CONFIG: ServerConfig = {
+  host: 'localhost',
+  port: 3000,
+};
+
+/**
+ * Connection status for socket clients
+ */
+export enum ConnectionStatus {
+  DISCONNECTED = 'disconnected',
+  CONNECTING = 'connecting',
+  CONNECTED = 'connected',
+  ERROR = 'error',
+}
+
+/**
+ * Client role for socket connections
+ */
+export enum ClientRole {
+  USER = 'user',
+  ADMIN = 'admin',
+}
+
+/**
+ * User registration data sent to server
+ */
+export interface UserRegistrationData {
+  /** User's display name */
+  name: string;
+  /** Unique machine identifier */
+  machineId: string;
+  /** Current monitoring state */
+  state: MonitoringState;
+}
+
+/**
+ * Admin registration data sent to server
+ */
+export interface AdminRegistrationData {
+  /** Admin's display name */
+  name: string;
+}
+
+/**
  * IPC channel names for Electron communication
  */
 export const IpcChannels = {
@@ -123,4 +179,19 @@ export const IpcChannels = {
   MINIMIZE_TO_TRAY: 'window:minimize-to-tray',
   SHOW_WINDOW: 'window:show',
   QUIT_APP: 'app:quit',
+
+  // Socket connection
+  SOCKET_CONNECT: 'socket:connect',
+  SOCKET_DISCONNECT: 'socket:disconnect',
+  SOCKET_STATUS: 'socket:status',
+  SOCKET_ON_STATUS_CHANGE: 'socket:status-change',
+
+  // Server config
+  GET_SERVER_CONFIG: 'server:get-config',
+  SET_SERVER_CONFIG: 'server:set-config',
+
+  // Users (admin only)
+  GET_USERS: 'users:get',
+  ON_USERS_UPDATE: 'users:update',
+  REQUEST_VIEW: 'users:request-view',
 } as const;

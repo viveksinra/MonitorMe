@@ -1,4 +1,4 @@
-import type { ConsentData, AppConfig, MonitoringState } from '@monitor-me/shared';
+import type { ConsentData, AppConfig, MonitoringState, ServerConfig, ConnectionStatus } from '@monitor-me/shared';
 
 export interface ElectronAPI {
   // Consent
@@ -18,6 +18,16 @@ export interface ElectronAPI {
   // Window controls
   minimizeToTray: () => void;
   quitApp: () => void;
+
+  // Server config
+  getServerConfig: () => Promise<ServerConfig>;
+  setServerConfig: (config: ServerConfig) => Promise<void>;
+
+  // Socket connection
+  connectToServer: (config: ServerConfig) => Promise<void>;
+  disconnectFromServer: () => Promise<void>;
+  getConnectionStatus: () => Promise<ConnectionStatus>;
+  onConnectionStatusChange: (callback: (status: ConnectionStatus) => void) => () => void;
 }
 
 declare global {

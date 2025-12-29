@@ -1,24 +1,48 @@
-import { contextBridge } from 'electron';
+import { contextBridge, ipcRenderer } from 'electron';
+import { IpcChannels } from '@monitor-me/shared';
+import type { ServerConfig, UserInfo, ConnectionStatus } from '@monitor-me/shared';
 
-// Admin app preload script
-// More IPC methods will be added in Phase 2 when signaling server is implemented
-
+// Expose protected methods that allow the renderer process to use
+// ipcRenderer without exposing the entire object
 contextBridge.exposeInMainWorld('electronAPI', {
-  // Placeholder for future IPC methods
-  // These will be implemented in Phase 2 with the signaling server
+  // Server config
+  getServerConfig: (): Promise<ServerConfig> =>
+    ipcRenderer.invoke(IpcChannels.GET_SERVER_CONFIG),
 
-  // Get list of connected users
-  getUsers: (): Promise<unknown[]> => Promise.resolve([]),
+  setServerConfig: (config: ServerConfig): Promise<void> =>
+    ipcRenderer.invoke(IpcChannels.SET_SERVER_CONFIG, config),
 
-  // Request to view a user's screen
-  requestScreenView: (userId: string): Promise<void> => {
-    console.log('Screen view requested for:', userId);
-    return Promise.resolve();
+  // Socket connection
+  connectToServer: (config: ServerConfig): Promise<void> =>
+    ipcRenderer.invoke(IpcChannels.SOCKET_CONNECT, config),
+
+  disconnectFromServer: (): Promise<void> =>
+    ipcRenderer.invoke(IpcChannels.SOCKET_DISCONNECT),
+
+  getConnectionStatus: (): Promise<ConnectionStatus> =>
+    ipcRenderer.invoke(IpcChannels.SOCKET_STATUS),
+
+  onConnectionStatusChange: (callback: (status: ConnectionStatus) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, status: ConnectionStatus) => callback(status);
+    ipcRenderer.on(IpcChannels.SOCKET_ON_STATUS_CHANGE, handler);
+    return () => {
+      ipcRenderer.removeListener(IpcChannels.SOCKET_ON_STATUS_CHANGE, handler);
+    };
   },
 
-  // Disconnect from viewing a screen
-  disconnectScreenView: (userId: string): Promise<void> => {
-    console.log('Disconnecting from:', userId);
-    return Promise.resolve();
+  // Users
+  getUsers: (): Promise<UserInfo[]> =>
+    ipcRenderer.invoke(IpcChannels.GET_USERS),
+
+  onUsersUpdate: (callback: (users: UserInfo[]) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, users: UserInfo[]) => callback(users);
+    ipcRenderer.on(IpcChannels.ON_USERS_UPDATE, handler);
+    return () => {
+      ipcRenderer.removeListener(IpcChannels.ON_USERS_UPDATE, handler);
+    };
   },
+
+  // View requests
+  requestScreenView: (userId: string): Promise<void> =>
+    ipcRenderer.invoke(IpcChannels.REQUEST_VIEW, userId),
 });
