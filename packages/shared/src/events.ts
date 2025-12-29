@@ -14,6 +14,20 @@ export const ClientEvents = {
   ADMIN_REQUEST_VIEW: 'admin:request-view',
   /** Admin cancels view request */
   ADMIN_CANCEL_VIEW: 'admin:cancel-view',
+  /** User accepts view request */
+  USER_ACCEPT_VIEW: 'user:accept-view',
+  /** User rejects view request */
+  USER_REJECT_VIEW: 'user:reject-view',
+  /** WebRTC offer from user */
+  WEBRTC_OFFER: 'webrtc:offer',
+  /** WebRTC answer from admin */
+  WEBRTC_ANSWER: 'webrtc:answer',
+  /** WebRTC ICE candidate exchange */
+  WEBRTC_ICE_CANDIDATE: 'webrtc:ice-candidate',
+  /** User ends view session */
+  USER_END_VIEW: 'user:end-view',
+  /** Admin ends view session */
+  ADMIN_END_VIEW: 'admin:end-view',
 } as const;
 
 /**
@@ -32,6 +46,18 @@ export const ServerEvents = {
   VIEW_REQUEST: 'view:request',
   /** View request cancelled */
   VIEW_CANCELLED: 'view:cancelled',
+  /** User accepted view request (sent to admin) */
+  VIEW_ACCEPTED: 'view:accepted',
+  /** User rejected view request (sent to admin) */
+  VIEW_REJECTED: 'view:rejected',
+  /** WebRTC offer relayed to admin */
+  WEBRTC_OFFER_RECEIVED: 'webrtc:offer-received',
+  /** WebRTC answer relayed to user */
+  WEBRTC_ANSWER_RECEIVED: 'webrtc:answer-received',
+  /** WebRTC ICE candidate relayed */
+  WEBRTC_ICE_CANDIDATE_RECEIVED: 'webrtc:ice-candidate-received',
+  /** View session ended */
+  VIEW_ENDED: 'view:ended',
   /** Registration successful */
   REGISTERED: 'registered',
   /** Error occurred */
@@ -49,6 +75,13 @@ export interface ClientToServerEvents {
   [ClientEvents.USER_STATE_UPDATE]: (data: { state: MonitoringState }) => void;
   [ClientEvents.ADMIN_REQUEST_VIEW]: (data: { targetUserId: string }) => void;
   [ClientEvents.ADMIN_CANCEL_VIEW]: (data: { targetUserId: string }) => void;
+  [ClientEvents.USER_ACCEPT_VIEW]: (data: { adminId: string }) => void;
+  [ClientEvents.USER_REJECT_VIEW]: (data: { adminId: string; reason?: string }) => void;
+  [ClientEvents.WEBRTC_OFFER]: (data: { targetId: string; offer: RTCSessionDescriptionInit }) => void;
+  [ClientEvents.WEBRTC_ANSWER]: (data: { targetId: string; answer: RTCSessionDescriptionInit }) => void;
+  [ClientEvents.WEBRTC_ICE_CANDIDATE]: (data: { targetId: string; candidate: RTCIceCandidateInit }) => void;
+  [ClientEvents.USER_END_VIEW]: (data: { adminId: string }) => void;
+  [ClientEvents.ADMIN_END_VIEW]: (data: { userId: string }) => void;
 }
 
 /**
@@ -61,6 +94,12 @@ export interface ServerToClientEvents {
   [ServerEvents.USER_STATE_CHANGED]: (data: { userId: string; state: MonitoringState }) => void;
   [ServerEvents.VIEW_REQUEST]: (data: { adminId: string; adminName: string }) => void;
   [ServerEvents.VIEW_CANCELLED]: (data: { adminId: string }) => void;
+  [ServerEvents.VIEW_ACCEPTED]: (data: { userId: string; userName: string }) => void;
+  [ServerEvents.VIEW_REJECTED]: (data: { userId: string; reason?: string }) => void;
+  [ServerEvents.WEBRTC_OFFER_RECEIVED]: (data: { fromId: string; offer: RTCSessionDescriptionInit }) => void;
+  [ServerEvents.WEBRTC_ANSWER_RECEIVED]: (data: { fromId: string; answer: RTCSessionDescriptionInit }) => void;
+  [ServerEvents.WEBRTC_ICE_CANDIDATE_RECEIVED]: (data: { fromId: string; candidate: RTCIceCandidateInit }) => void;
+  [ServerEvents.VIEW_ENDED]: (data: { endedBy: 'user' | 'admin'; userId?: string; adminId?: string }) => void;
   [ServerEvents.REGISTERED]: (data: { id: string }) => void;
   [ServerEvents.ERROR]: (data: { message: string }) => void;
   [ServerEvents.SCREENSHOT_AVAILABLE]: (data: ScreenshotMetadata) => void;

@@ -112,6 +112,13 @@ function setupIpcHandlers() {
     electron_1.ipcMain.handle(shared_1.IpcChannels.REQUEST_VIEW, (_event, userId) => {
         (0, socket_client_1.requestViewUser)(userId);
     });
+    // Live view handlers
+    electron_1.ipcMain.handle('view:end-session', (_event, userId) => {
+        (0, socket_client_1.endViewSession)(userId);
+    });
+    electron_1.ipcMain.handle('view:get-stream', () => {
+        return (0, socket_client_1.getRemoteStream)();
+    });
 }
 // Initialize app
 electron_1.app.whenReady().then(() => {

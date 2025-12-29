@@ -17,6 +17,18 @@ export interface ElectronAPI {
 
   // View requests
   requestScreenView: (userId: string) => Promise<void>;
+
+  // Live view event listeners
+  onViewAccepted: (callback: (data: { userId: string; userName: string }) => void) => () => void;
+  onViewRejected: (callback: (data: { userId: string; reason?: string }) => void) => () => void;
+  onViewEnded: (callback: () => void) => () => void;
+  onStreamReady: (callback: (data: { userId: string; userName: string }) => void) => () => void;
+  onWebRTCStateChange: (callback: (data: { userId: string; state: string }) => void) => () => void;
+  onWebRTCError: (callback: (data: { userId: string; error: string }) => void) => () => void;
+
+  // Live view actions
+  endViewSession: (userId: string) => Promise<void>;
+  getRemoteStream: () => Promise<MediaStream | null>;
 }
 
 declare global {

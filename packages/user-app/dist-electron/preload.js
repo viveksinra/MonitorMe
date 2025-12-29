@@ -52,5 +52,44 @@ electron_1.contextBridge.exposeInMainWorld('electronAPI', {
             electron_1.ipcRenderer.removeListener(shared_1.IpcChannels.ON_SCREENSHOT_CAPTURED, handler);
         };
     },
+    // View request handlers
+    onViewRequest: (callback) => {
+        const handler = (_event, data) => callback(data);
+        electron_1.ipcRenderer.on('view:request', handler);
+        return () => {
+            electron_1.ipcRenderer.removeListener('view:request', handler);
+        };
+    },
+    onViewCancelled: (callback) => {
+        const handler = () => callback();
+        electron_1.ipcRenderer.on('view:cancelled', handler);
+        return () => {
+            electron_1.ipcRenderer.removeListener('view:cancelled', handler);
+        };
+    },
+    onViewConnected: (callback) => {
+        const handler = () => callback();
+        electron_1.ipcRenderer.on('view:connected', handler);
+        return () => {
+            electron_1.ipcRenderer.removeListener('view:connected', handler);
+        };
+    },
+    onViewEnded: (callback) => {
+        const handler = () => callback();
+        electron_1.ipcRenderer.on('view:ended', handler);
+        return () => {
+            electron_1.ipcRenderer.removeListener('view:ended', handler);
+        };
+    },
+    onViewError: (callback) => {
+        const handler = (_event, data) => callback(data);
+        electron_1.ipcRenderer.on('view:error', handler);
+        return () => {
+            electron_1.ipcRenderer.removeListener('view:error', handler);
+        };
+    },
+    acceptViewRequest: () => electron_1.ipcRenderer.invoke('view:accept'),
+    rejectViewRequest: (reason) => electron_1.ipcRenderer.invoke('view:reject', reason),
+    endViewSession: () => electron_1.ipcRenderer.invoke('view:end'),
 });
 //# sourceMappingURL=preload.js.map

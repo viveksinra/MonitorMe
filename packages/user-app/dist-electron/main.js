@@ -76,6 +76,8 @@ const store = new electron_store_1.default({
         machineId: '',
     },
 });
+// Set store reference for socket client (for consent checking)
+(0, socket_client_1.setStore)(store);
 let mainWindow = null;
 let tray = null;
 let currentState = shared_1.MonitoringState.IDLE;
@@ -216,6 +218,16 @@ function setupIpcHandlers() {
     });
     electron_1.ipcMain.handle(shared_1.IpcChannels.CAPTURE_SCREENSHOT_NOW, async () => {
         await (0, screenshot_scheduler_1.captureNow)();
+    });
+    // View request handlers
+    electron_1.ipcMain.handle('view:accept', async () => {
+        await (0, socket_client_1.acceptViewRequest)();
+    });
+    electron_1.ipcMain.handle('view:reject', (_event, reason) => {
+        (0, socket_client_1.rejectViewRequest)(reason);
+    });
+    electron_1.ipcMain.handle('view:end', () => {
+        (0, socket_client_1.endViewSession)();
     });
 }
 // Initialize app

@@ -32,4 +32,12 @@ export declare function cancelViewRequest(targetUserId: string): void;
  * Check if connected
  */
 export declare function isConnected(): boolean;
+/**
+ * Admin ends the view session
+ */
+export declare function endViewSession(userId: string): void;
+/**
+ * Get the current remote stream for rendering
+ */
+export declare function getRemoteStream(): MediaStream | null;
 //# sourceMappingURL=socket-client.d.ts.map

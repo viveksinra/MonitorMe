@@ -36,6 +36,16 @@ export interface ElectronAPI {
   getLastScreenshotTime: () => Promise<string | null>;
   captureScreenshotNow: () => Promise<void>;
   onScreenshotCaptured: (callback: (event: ScreenshotCaptureEvent) => void) => () => void;
+
+  // Live view requests
+  onViewRequest: (callback: (data: { adminId: string; adminName: string }) => void) => () => void;
+  onViewCancelled: (callback: () => void) => () => void;
+  onViewConnected: (callback: () => void) => () => void;
+  onViewEnded: (callback: () => void) => () => void;
+  onViewError: (callback: (data: { message: string }) => void) => () => void;
+  acceptViewRequest: () => Promise<void>;
+  rejectViewRequest: (reason?: string) => Promise<void>;
+  endViewSession: () => Promise<void>;
 }
 
 declare global {

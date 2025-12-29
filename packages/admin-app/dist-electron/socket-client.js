@@ -8,12 +8,16 @@ exports.disconnectFromServer = disconnectFromServer;
 exports.requestViewUser = requestViewUser;
 exports.cancelViewRequest = cancelViewRequest;
 exports.isConnected = isConnected;
+exports.endViewSession = endViewSession;
+exports.getRemoteStream = getRemoteStream;
 const socket_io_client_1 = require("socket.io-client");
 const shared_1 = require("@monitor-me/shared");
+const webrtc_manager_1 = require("./webrtc-manager");
 let socket = null;
 let connectionStatus = shared_1.ConnectionStatus.DISCONNECTED;
 let mainWindow = null;
 let currentUsers = [];
+let currentWebRTCManager = null;
 /**
  * Set the main window reference for IPC communication
  */
@@ -127,6 +131,54 @@ function connectToServer(config, adminData) {
         console.log(`[Socket] New screenshot available from: ${metadata.userName}`);
         mainWindow?.webContents.send(shared_1.IpcChannels.ON_SCREENSHOT_AVAILABLE, metadata);
     });
+    // WebRTC view events
+    socket.on(shared_1.ServerEvents.VIEW_ACCEPTED, async (data) => {
+        console.log(`[Socket] View accepted by ${data.userName}`);
+        // Initialize WebRTC manager
+        if (mainWindow && socket) {
+            currentWebRTCManager = new webrtc_manager_1.AdminWebRTCManager({
+                socket,
+                userId: data.userId,
+                userName: data.userName,
+                mainWindow,
+                onConnectionStateChange: (state) => {
+                    console.log(`[WebRTC] Connection state: ${state}`);
+                    mainWindow?.webContents.send('webrtc:state-change', { userId: data.userId, state });
+                },
+                onError: (error) => {
+                    console.error('[WebRTC] Error:', error);
+                    mainWindow?.webContents.send('webrtc:error', { userId: data.userId, error: error.message });
+                    endViewSession(data.userId);
+                },
+            });
+            await currentWebRTCManager.initialize();
+        }
+        mainWindow?.webContents.send('view:accepted', data);
+    });
+    socket.on(shared_1.ServerEvents.VIEW_REJECTED, (data) => {
+        console.log(`[Socket] View rejected by user: ${data.reason}`);
+        currentWebRTCManager = null;
+        mainWindow?.webContents.send('view:rejected', data);
+    });
+    socket.on(shared_1.ServerEvents.WEBRTC_OFFER_RECEIVED, async (data) => {
+        console.log(`[Socket] Received WebRTC offer from ${data.fromId}`);
+        if (currentWebRTCManager) {
+            await currentWebRTCManager.handleOffer(data.offer);
+        }
+    });
+    socket.on(shared_1.ServerEvents.WEBRTC_ICE_CANDIDATE_RECEIVED, async (data) => {
+        if (currentWebRTCManager) {
+            await currentWebRTCManager.handleIceCandidate(data.candidate);
+        }
+    });
+    socket.on(shared_1.ServerEvents.VIEW_ENDED, (data) => {
+        console.log(`[Socket] View ended by ${data.endedBy}`);
+        if (currentWebRTCManager) {
+            currentWebRTCManager.cleanup();
+            currentWebRTCManager = null;
+        }
+        mainWindow?.webContents.send('view:ended', data);
+    });
 }
 /**
  * Disconnect from the signaling server
@@ -163,5 +215,25 @@ function cancelViewRequest(targetUserId) {
  */
 function isConnected() {
     return socket !== null && socket.connected;
+}
+/**
+ * Admin ends the view session
+ */
+function endViewSession(userId) {
+    if (!socket) {
+        return;
+    }
+    socket.emit(shared_1.ClientEvents.ADMIN_END_VIEW, { userId });
+    if (currentWebRTCManager) {
+        currentWebRTCManager.cleanup();
+        currentWebRTCManager = null;
+    }
+    console.log('[Socket] Ended view session');
+}
+/**
+ * Get the current remote stream for rendering
+ */
+function getRemoteStream() {
+    return currentWebRTCManager?.getRemoteStream() || null;
 }
 //# sourceMappingURL=socket-client.js.map

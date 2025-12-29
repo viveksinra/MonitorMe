@@ -16,6 +16,8 @@ import {
   getUsers,
   requestViewUser,
   setMainWindow,
+  endViewSession,
+  getRemoteStream,
 } from './socket-client';
 
 // Initialize electron-store
@@ -101,6 +103,15 @@ function setupIpcHandlers(): void {
 
   ipcMain.handle(IpcChannels.REQUEST_VIEW, (_event, userId: string): void => {
     requestViewUser(userId);
+  });
+
+  // Live view handlers
+  ipcMain.handle('view:end-session', (_event, userId: string): void => {
+    endViewSession(userId);
+  });
+
+  ipcMain.handle('view:get-stream', (): MediaStream | null => {
+    return getRemoteStream();
   });
 }
 

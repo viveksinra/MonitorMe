@@ -8,10 +8,17 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     emptyOutDir: true,
+    commonjsOptions: {
+      include: [/node_modules/, /shared/],
+    },
+  },
+  optimizeDeps: {
+    include: ['@monitor-me/shared'],
   },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
+      '@monitor-me/shared': path.resolve(__dirname, '../shared/dist/index.js'),
     },
   },
   server: {

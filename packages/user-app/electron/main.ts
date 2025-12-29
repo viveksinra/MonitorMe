@@ -20,6 +20,10 @@ import {
   getConnectionStatus,
   sendStateUpdate,
   setMainWindow,
+  setStore,
+  acceptViewRequest,
+  rejectViewRequest,
+  endViewSession,
 } from './socket-client';
 import {
   initScheduler,
@@ -62,6 +66,9 @@ const store = new Store({
     machineId: '',
   },
 });
+
+// Set store reference for socket client (for consent checking)
+setStore(store as unknown as Store<Record<string, unknown>>);
 
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
@@ -230,6 +237,19 @@ function setupIpcHandlers(): void {
 
   ipcMain.handle(IpcChannels.CAPTURE_SCREENSHOT_NOW, async (): Promise<void> => {
     await captureNow();
+  });
+
+  // View request handlers
+  ipcMain.handle('view:accept', async (): Promise<void> => {
+    await acceptViewRequest();
+  });
+
+  ipcMain.handle('view:reject', (_event, reason?: string): void => {
+    rejectViewRequest(reason);
+  });
+
+  ipcMain.handle('view:end', (): void => {
+    endViewSession();
   });
 }
 

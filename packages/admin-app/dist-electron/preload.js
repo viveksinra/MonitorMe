@@ -30,5 +30,51 @@ electron_1.contextBridge.exposeInMainWorld('electronAPI', {
     },
     // View requests
     requestScreenView: (userId) => electron_1.ipcRenderer.invoke(shared_1.IpcChannels.REQUEST_VIEW, userId),
+    // Live view event listeners
+    onViewAccepted: (callback) => {
+        const handler = (_event, data) => callback(data);
+        electron_1.ipcRenderer.on('view:accepted', handler);
+        return () => {
+            electron_1.ipcRenderer.removeListener('view:accepted', handler);
+        };
+    },
+    onViewRejected: (callback) => {
+        const handler = (_event, data) => callback(data);
+        electron_1.ipcRenderer.on('view:rejected', handler);
+        return () => {
+            electron_1.ipcRenderer.removeListener('view:rejected', handler);
+        };
+    },
+    onViewEnded: (callback) => {
+        const handler = () => callback();
+        electron_1.ipcRenderer.on('view:ended', handler);
+        return () => {
+            electron_1.ipcRenderer.removeListener('view:ended', handler);
+        };
+    },
+    onStreamReady: (callback) => {
+        const handler = (_event, data) => callback(data);
+        electron_1.ipcRenderer.on('webrtc:stream-ready', handler);
+        return () => {
+            electron_1.ipcRenderer.removeListener('webrtc:stream-ready', handler);
+        };
+    },
+    onWebRTCStateChange: (callback) => {
+        const handler = (_event, data) => callback(data);
+        electron_1.ipcRenderer.on('webrtc:state-change', handler);
+        return () => {
+            electron_1.ipcRenderer.removeListener('webrtc:state-change', handler);
+        };
+    },
+    onWebRTCError: (callback) => {
+        const handler = (_event, data) => callback(data);
+        electron_1.ipcRenderer.on('webrtc:error', handler);
+        return () => {
+            electron_1.ipcRenderer.removeListener('webrtc:error', handler);
+        };
+    },
+    // Live view actions
+    endViewSession: (userId) => electron_1.ipcRenderer.invoke('view:end-session', userId),
+    getRemoteStream: () => electron_1.ipcRenderer.invoke('view:get-stream'),
 });
 //# sourceMappingURL=preload.js.map

@@ -92,4 +92,54 @@ contextBridge.exposeInMainWorld('electronAPI', {
       ipcRenderer.removeListener(IpcChannels.ON_SCREENSHOT_CAPTURED, handler);
     };
   },
+
+  // View request handlers
+  onViewRequest: (callback: (data: { adminId: string; adminName: string }) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: { adminId: string; adminName: string }) => callback(data);
+    ipcRenderer.on('view:request', handler);
+    return () => {
+      ipcRenderer.removeListener('view:request', handler);
+    };
+  },
+
+  onViewCancelled: (callback: () => void): (() => void) => {
+    const handler = () => callback();
+    ipcRenderer.on('view:cancelled', handler);
+    return () => {
+      ipcRenderer.removeListener('view:cancelled', handler);
+    };
+  },
+
+  onViewConnected: (callback: () => void): (() => void) => {
+    const handler = () => callback();
+    ipcRenderer.on('view:connected', handler);
+    return () => {
+      ipcRenderer.removeListener('view:connected', handler);
+    };
+  },
+
+  onViewEnded: (callback: () => void): (() => void) => {
+    const handler = () => callback();
+    ipcRenderer.on('view:ended', handler);
+    return () => {
+      ipcRenderer.removeListener('view:ended', handler);
+    };
+  },
+
+  onViewError: (callback: (data: { message: string }) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: { message: string }) => callback(data);
+    ipcRenderer.on('view:error', handler);
+    return () => {
+      ipcRenderer.removeListener('view:error', handler);
+    };
+  },
+
+  acceptViewRequest: (): Promise<void> =>
+    ipcRenderer.invoke('view:accept'),
+
+  rejectViewRequest: (reason?: string): Promise<void> =>
+    ipcRenderer.invoke('view:reject', reason),
+
+  endViewSession: (): Promise<void> =>
+    ipcRenderer.invoke('view:end'),
 });

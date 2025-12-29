@@ -6,6 +6,7 @@ import {
 } from '@monitor-me/shared';
 import type { UserInfo, ServerConfig } from '@monitor-me/shared';
 import ScreenshotTimeline from './ScreenshotTimeline';
+import LiveViewModal from './LiveViewModal';
 
 interface DashboardProps {
   onLogout: () => void;
@@ -20,6 +21,8 @@ export default function Dashboard({ onLogout }: DashboardProps) {
   );
   const [isConnecting, setIsConnecting] = useState(false);
   const [selectedUserForScreenshots, setSelectedUserForScreenshots] = useState<UserInfo | null>(null);
+  const [activeLiveView, setActiveLiveView] = useState<{ userId: string; userName: string } | null>(null);
+  const [pendingViewRequest, setPendingViewRequest] = useState<string | null>(null);
 
   useEffect(() => {
     loadServerConfig();
@@ -37,9 +40,27 @@ export default function Dashboard({ onLogout }: DashboardProps) {
       setUsers(updatedUsers);
     });
 
+    // Subscribe to view events
+    const unsubscribeViewAccepted = window.electronAPI.onViewAccepted((data) => {
+      setPendingViewRequest(null);
+      setActiveLiveView({ userId: data.userId, userName: data.userName });
+    });
+
+    const unsubscribeViewRejected = window.electronAPI.onViewRejected((data) => {
+      setPendingViewRequest(null);
+      alert(`User rejected the view request${data.reason ? `: ${data.reason}` : ''}`);
+    });
+
+    const unsubscribeViewEnded = window.electronAPI.onViewEnded(() => {
+      setActiveLiveView(null);
+    });
+
     return () => {
       unsubscribeStatus();
       unsubscribeUsers();
+      unsubscribeViewAccepted();
+      unsubscribeViewRejected();
+      unsubscribeViewEnded();
     };
   }, []);
 
@@ -93,9 +114,11 @@ export default function Dashboard({ onLogout }: DashboardProps) {
 
   const handleViewScreen = async (userId: string) => {
     try {
+      setPendingViewRequest(userId);
       await window.electronAPI.requestScreenView(userId);
     } catch (error) {
       console.error('Error requesting screen view:', error);
+      setPendingViewRequest(null);
     }
   };
 
@@ -476,9 +499,9 @@ export default function Dashboard({ onLogout }: DashboardProps) {
                         <button
                           onClick={() => handleViewScreen(user.id)}
                           className="btn-primary text-xs"
-                          disabled={!user.isOnline || user.state === MonitoringState.PAUSED}
+                          disabled={!user.isOnline || user.state === MonitoringState.PAUSED || pendingViewRequest === user.id}
                         >
-                          View Screen
+                          {pendingViewRequest === user.id ? 'Requesting...' : 'View Screen'}
                         </button>
                       </td>
                     </tr>
@@ -497,6 +520,15 @@ export default function Dashboard({ onLogout }: DashboardProps) {
           userName={selectedUserForScreenshots.name}
           serverConfig={{ host: serverHost, port: serverPort }}
           onClose={() => setSelectedUserForScreenshots(null)}
+        />
+      )}
+
+      {/* Live View Modal */}
+      {activeLiveView && (
+        <LiveViewModal
+          userId={activeLiveView.userId}
+          userName={activeLiveView.userName}
+          onClose={() => setActiveLiveView(null)}
         />
       )}
     </div>
