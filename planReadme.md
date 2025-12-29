@@ -13,6 +13,62 @@ The system is **consent-first, transparent, and ethical**. At no point does the 
 
 ---
 
+## Technology Stack
+
+| Category | Technology |
+|----------|------------|
+| **Runtime** | Electron.js |
+| **Package Manager** | npm (with workspaces) |
+| **Language** | TypeScript |
+| **UI Framework** | React 18+ |
+| **Styling** | Tailwind CSS |
+| **Build Tool** | Vite |
+| **Local Storage** | electron-store |
+| **Packaging** | electron-builder |
+
+---
+
+## Project Structure
+
+```
+MonitorMe/
+├── package.json                 # Root workspace config
+├── tsconfig.json               # Base TypeScript config
+├── packages/
+│   ├── shared/                 # Shared types, utils, constants
+│   │   ├── package.json
+│   │   ├── tsconfig.json
+│   │   └── src/
+│   │       ├── types.ts        # Shared TypeScript interfaces
+│   │       ├── constants.ts    # Work hours, intervals config
+│   │       └── index.ts
+│   │
+│   ├── user-app/               # Employee Electron app
+│   │   ├── package.json
+│   │   ├── electron/
+│   │   │   ├── main.ts         # Electron main process
+│   │   │   ├── preload.ts      # Preload script
+│   │   │   └── tray.ts         # Tray icon management
+│   │   └── src/
+│   │       ├── App.tsx
+│   │       ├── main.tsx
+│   │       └── components/
+│   │           └── ConsentScreen.tsx
+│   │
+│   └── admin-app/              # Admin Electron app
+│       ├── package.json
+│       ├── electron/
+│       │   ├── main.ts
+│       │   └── preload.ts
+│       └── src/
+│           ├── App.tsx
+│           ├── main.tsx
+│           └── components/
+│               └── Dashboard.tsx
+```
+
+---
+
 ## Key Principles (Non-Negotiable)
 
 * Explicit upfront user consent
@@ -41,11 +97,11 @@ The system is **consent-first, transparent, and ethical**. At no point does the 
 
 ### Components
 
-1. **Admin Electron App** – used by managers
-2. **User Electron App** – installed on employee machines
-3. **Local Signaling Server** – runs on one machine inside the network
+1. **Admin Electron App** - used by managers
+2. **User Electron App** - installed on employee machines
+3. **Local Signaling Server** - runs on one machine inside the network
 
-> ⚠️ Media (screen/video/audio) flows **directly between Admin and User machines** using WebRTC. The server is used **only for signaling and coordination**.
+> Media (screen/video/audio) flows **directly between Admin and User machines** using WebRTC. The server is used **only for signaling and coordination**.
 
 ---
 
@@ -98,10 +154,10 @@ Consent is taken **once during signup**, but visibility is **continuous**.
 
 | State              | Tray Indicator | Description                  |
 | ------------------ | -------------- | ---------------------------- |
-| Idle               | 🟢             | No monitoring                |
-| Screenshots Active | 🟡             | Periodic screenshots running |
-| Live View Active   | 🔴             | Admin watching screen        |
-| Paused             | ⚪              | Monitoring paused by user    |
+| Idle               | Green          | No monitoring                |
+| Screenshots Active | Yellow         | Periodic screenshots running |
+| Live View Active   | Red            | Admin watching screen        |
+| Paused             | Gray           | Monitoring paused by user    |
 
 ---
 
@@ -109,7 +165,7 @@ Consent is taken **once during signup**, but visibility is **continuous**.
 
 ---
 
-## Phase 1 – Foundation & Consent
+## Phase 1 - Foundation & Consent
 
 ### Goal
 
@@ -117,11 +173,29 @@ Set up the base Electron apps and consent system.
 
 ### Deliverables
 
+* Monorepo structure with npm workspaces
+* Shared package with types and constants
 * Electron boilerplate (Admin & User apps)
 * App configuration (work hours, screenshot interval)
 * Consent UI with explicit checkboxes
-* Store consent locally (and optionally on server)
-* Basic tray icon with status text
+* Store consent locally using electron-store
+* Basic tray icon with status indicators
+
+### Implementation Details
+
+**Consent Screen Requirements:**
+- Clear explanation of what monitoring entails
+- Three explicit checkboxes:
+  1. "I consent to periodic screenshots during work hours"
+  2. "I consent to admin-initiated live screen viewing"
+  3. "I understand monitoring indicators will always be visible"
+- "I Agree" button only enabled when all boxes checked
+- Consent stored locally and optionally synced to server
+
+**Tray Icon Features:**
+- Visual status indicator (colored icon)
+- Context menu with status, pause/resume, and quit options
+- Tooltip showing current monitoring state
 
 ### Notes
 
@@ -130,7 +204,7 @@ Set up the base Electron apps and consent system.
 
 ---
 
-## Phase 2 – Local Signaling Server
+## Phase 2 - Local Signaling Server
 
 ### Goal
 
@@ -140,7 +214,7 @@ Enable discovery and communication inside LAN.
 
 * Node.js signaling server (WebSocket-based)
 * Online user registry
-* Admin ↔ User request messaging
+* Admin <-> User request messaging
 * Role-based identification (admin vs user)
 
 ### Notes
@@ -150,7 +224,7 @@ Enable discovery and communication inside LAN.
 
 ---
 
-## Phase 3 – Periodic Screenshot System
+## Phase 3 - Periodic Screenshot System
 
 ### Goal
 
@@ -171,7 +245,7 @@ Implement consent-based screenshot capture.
 
 ---
 
-## Phase 4 – Live Screen Viewing (WebRTC)
+## Phase 4 - Live Screen Viewing (WebRTC)
 
 ### Goal
 
@@ -189,11 +263,11 @@ Enable admin to view user screens live with awareness.
 
 * No auto-connect
 * No silent viewing
-* Tray must be 🔴 during live view
+* Tray must be Red during live view
 
 ---
 
-## Phase 5 – Controls, Safety & Polish
+## Phase 5 - Controls, Safety & Polish
 
 ### Goal
 
@@ -207,4 +281,41 @@ Make the system production-safe for office use.
 * Performance optimization (frame rate limits)
 * Basic authentication for admin
 
+---
 
+## Getting Started
+
+### Prerequisites
+
+* Node.js 18+
+* npm 9+
+
+### Development Setup
+
+```bash
+# Clone the repository
+git clone <repo-url>
+cd MonitorMe
+
+# Install dependencies
+npm install
+
+# Run User App in development
+npm run dev:user
+
+# Run Admin App in development
+npm run dev:admin
+
+# Build for production
+npm run build
+```
+
+### Available Scripts
+
+| Script | Description |
+|--------|-------------|
+| `npm run dev:user` | Start User App in dev mode |
+| `npm run dev:admin` | Start Admin App in dev mode |
+| `npm run build` | Build all packages |
+| `npm run build:user` | Build User App |
+| `npm run build:admin` | Build Admin App |

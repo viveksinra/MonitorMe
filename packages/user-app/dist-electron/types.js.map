@@ -1,0 +1,1 @@
+{"version":3,"file":"types.js","sourceRoot":"","sources":["../electron/types.ts"],"names":[],"mappings":";AAAA,+CAA+C;AAC/C,sEAAsE;;AAItE,wCAEC;AAED,wCAEC;AARD,IAAI,aAAa,GAAG,KAAK,CAAC;AAE1B,SAAgB,cAAc,CAAC,KAAc;IAC3C,aAAa,GAAG,KAAK,CAAC;AACxB,CAAC;AAED,SAAgB,cAAc;IAC5B,OAAO,aAAa,CAAC;AACvB,CAAC"}
