@@ -117,7 +117,19 @@ function setupIpcHandlers() {
         (0, socket_client_1.endViewSession)(userId);
     });
     electron_1.ipcMain.handle('view:get-stream', () => {
-        return (0, socket_client_1.getRemoteStream)();
+        // WebRTC runs in the renderer now; keep for backward compatibility.
+        return null;
+    });
+    // WebRTC signaling pass-through (renderer -> main -> socket)
+    electron_1.ipcMain.handle('webrtc:send-answer', (_event, data) => {
+        (0, socket_client_1.sendWebRTCAnswer)(data.userId, data.answer);
+    });
+    electron_1.ipcMain.handle('webrtc:send-ice-candidate', (_event, data) => {
+        (0, socket_client_1.sendWebRTCIceCandidate)(data.userId, data.candidate);
+    });
+    // Allow renderer to fetch any buffered offer/ICE that arrived before UI mounted
+    electron_1.ipcMain.handle('webrtc:consume-pending', (_event, userId) => {
+        return (0, socket_client_1.consumePendingWebRTC)(userId);
     });
 }
 // Initialize app

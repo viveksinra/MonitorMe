@@ -10,13 +10,28 @@ import {
   type AdminRegistrationData,
   type ScreenshotMetadata,
 } from '@monitor-me/shared';
-import { AdminWebRTCManager } from './webrtc-manager';
 
 let socket: Socket | null = null;
 let connectionStatus: ConnectionStatus = ConnectionStatus.DISCONNECTED;
 let mainWindow: BrowserWindow | null = null;
 let currentUsers: UserInfo[] = [];
-let currentWebRTCManager: AdminWebRTCManager | null = null;
+
+// Buffer WebRTC signaling so renderer can pull it even if events arrive before UI is ready
+const pendingWebRTC = new Map<
+  string,
+  {
+    offer?: RTCSessionDescriptionInit;
+    ice: RTCIceCandidateInit[];
+  }
+>();
+
+function ensurePending(userId: string) {
+  const existing = pendingWebRTC.get(userId);
+  if (existing) return existing;
+  const created = { offer: undefined, ice: [] as RTCIceCandidateInit[] };
+  pendingWebRTC.set(userId, created);
+  return created;
+}
 
 /**
  * Set the main window reference for IPC communication
@@ -37,6 +52,31 @@ export function getConnectionStatus(): ConnectionStatus {
  */
 export function getUsers(): UserInfo[] {
   return currentUsers;
+}
+
+/**
+ * Consume buffered WebRTC signaling for a user (clears buffer)
+ */
+export function consumePendingWebRTC(userId: string): { offer?: RTCSessionDescriptionInit; ice: RTCIceCandidateInit[] } {
+  const existing = pendingWebRTC.get(userId);
+  pendingWebRTC.delete(userId);
+  return existing ? { offer: existing.offer, ice: [...existing.ice] } : { ice: [] };
+}
+
+/**
+ * Send WebRTC answer to the user via signaling server
+ */
+export function sendWebRTCAnswer(userId: string, answer: RTCSessionDescriptionInit): void {
+  if (!socket || !socket.connected) return;
+  socket.emit(ClientEvents.WEBRTC_ANSWER, { targetId: userId, answer });
+}
+
+/**
+ * Send WebRTC ICE candidate to the user via signaling server
+ */
+export function sendWebRTCIceCandidate(userId: string, candidate: RTCIceCandidateInit): void {
+  if (!socket || !socket.connected) return;
+  socket.emit(ClientEvents.WEBRTC_ICE_CANDIDATE, { targetId: userId, candidate });
 }
 
 /**
@@ -160,59 +200,30 @@ export function connectToServer(
   socket.on(ServerEvents.VIEW_ACCEPTED, async (data: { userId: string; userName: string }) => {
     console.log(`[Socket] View accepted by ${data.userName}`);
 
-    // Initialize WebRTC manager
-    if (mainWindow && socket) {
-      currentWebRTCManager = new AdminWebRTCManager({
-        socket,
-        userId: data.userId,
-        userName: data.userName,
-        mainWindow,
-        onConnectionStateChange: (state) => {
-          console.log(`[WebRTC] Connection state: ${state}`);
-          mainWindow?.webContents.send('webrtc:state-change', { userId: data.userId, state });
-        },
-        onError: (error) => {
-          console.error('[WebRTC] Error:', error);
-          mainWindow?.webContents.send('webrtc:error', { userId: data.userId, error: error.message });
-          endViewSession(data.userId);
-        },
-      });
-
-      await currentWebRTCManager.initialize();
-    }
-
     mainWindow?.webContents.send('view:accepted', data);
   });
 
   socket.on(ServerEvents.VIEW_REJECTED, (data: { userId: string; reason?: string }) => {
     console.log(`[Socket] View rejected by user: ${data.reason}`);
 
-    currentWebRTCManager = null;
-
     mainWindow?.webContents.send('view:rejected', data);
   });
 
   socket.on(ServerEvents.WEBRTC_OFFER_RECEIVED, async (data: { fromId: string; offer: RTCSessionDescriptionInit }) => {
     console.log(`[Socket] Received WebRTC offer from ${data.fromId}`);
-
-    if (currentWebRTCManager) {
-      await currentWebRTCManager.handleOffer(data.offer);
-    }
+    const pending = ensurePending(data.fromId);
+    pending.offer = data.offer;
+    mainWindow?.webContents.send('webrtc:offer', { userId: data.fromId, offer: data.offer });
   });
 
   socket.on(ServerEvents.WEBRTC_ICE_CANDIDATE_RECEIVED, async (data: { fromId: string; candidate: RTCIceCandidateInit }) => {
-    if (currentWebRTCManager) {
-      await currentWebRTCManager.handleIceCandidate(data.candidate);
-    }
+    const pending = ensurePending(data.fromId);
+    pending.ice.push(data.candidate);
+    mainWindow?.webContents.send('webrtc:ice-candidate', { userId: data.fromId, candidate: data.candidate });
   });
 
   socket.on(ServerEvents.VIEW_ENDED, (data: { endedBy: 'user' | 'admin'; userId?: string }) => {
     console.log(`[Socket] View ended by ${data.endedBy}`);
-
-    if (currentWebRTCManager) {
-      currentWebRTCManager.cleanup();
-      currentWebRTCManager = null;
-    }
 
     mainWindow?.webContents.send('view:ended', data);
   });
@@ -268,17 +279,5 @@ export function endViewSession(userId: string): void {
 
   socket.emit(ClientEvents.ADMIN_END_VIEW, { userId });
 
-  if (currentWebRTCManager) {
-    currentWebRTCManager.cleanup();
-    currentWebRTCManager = null;
-  }
-
   console.log('[Socket] Ended view session');
-}
-
-/**
- * Get the current remote stream for rendering
- */
-export function getRemoteStream(): MediaStream | null {
-  return currentWebRTCManager?.getRemoteStream() || null;
 }

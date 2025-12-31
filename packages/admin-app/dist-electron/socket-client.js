@@ -3,21 +3,31 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.setMainWindow = setMainWindow;
 exports.getConnectionStatus = getConnectionStatus;
 exports.getUsers = getUsers;
+exports.consumePendingWebRTC = consumePendingWebRTC;
+exports.sendWebRTCAnswer = sendWebRTCAnswer;
+exports.sendWebRTCIceCandidate = sendWebRTCIceCandidate;
 exports.connectToServer = connectToServer;
 exports.disconnectFromServer = disconnectFromServer;
 exports.requestViewUser = requestViewUser;
 exports.cancelViewRequest = cancelViewRequest;
 exports.isConnected = isConnected;
 exports.endViewSession = endViewSession;
-exports.getRemoteStream = getRemoteStream;
 const socket_io_client_1 = require("socket.io-client");
 const shared_1 = require("@monitor-me/shared");
-const webrtc_manager_1 = require("./webrtc-manager");
 let socket = null;
 let connectionStatus = shared_1.ConnectionStatus.DISCONNECTED;
 let mainWindow = null;
 let currentUsers = [];
-let currentWebRTCManager = null;
+// Buffer WebRTC signaling so renderer can pull it even if events arrive before UI is ready
+const pendingWebRTC = new Map();
+function ensurePending(userId) {
+    const existing = pendingWebRTC.get(userId);
+    if (existing)
+        return existing;
+    const created = { ice: [] };
+    pendingWebRTC.set(userId, created);
+    return created;
+}
 /**
  * Set the main window reference for IPC communication
  */
@@ -35,6 +45,30 @@ function getConnectionStatus() {
  */
 function getUsers() {
     return currentUsers;
+}
+/**
+ * Consume buffered WebRTC signaling for a user (clears buffer)
+ */
+function consumePendingWebRTC(userId) {
+    const existing = pendingWebRTC.get(userId);
+    pendingWebRTC.delete(userId);
+    return existing ? { offer: existing.offer, ice: [...existing.ice] } : { ice: [] };
+}
+/**
+ * Send WebRTC answer to the user via signaling server
+ */
+function sendWebRTCAnswer(userId, answer) {
+    if (!socket || !socket.connected)
+        return;
+    socket.emit(shared_1.ClientEvents.WEBRTC_ANSWER, { targetId: userId, answer });
+}
+/**
+ * Send WebRTC ICE candidate to the user via signaling server
+ */
+function sendWebRTCIceCandidate(userId, candidate) {
+    if (!socket || !socket.connected)
+        return;
+    socket.emit(shared_1.ClientEvents.WEBRTC_ICE_CANDIDATE, { targetId: userId, candidate });
 }
 /**
  * Update connection status and notify renderer
@@ -134,49 +168,25 @@ function connectToServer(config, adminData) {
     // WebRTC view events
     socket.on(shared_1.ServerEvents.VIEW_ACCEPTED, async (data) => {
         console.log(`[Socket] View accepted by ${data.userName}`);
-        // Initialize WebRTC manager
-        if (mainWindow && socket) {
-            currentWebRTCManager = new webrtc_manager_1.AdminWebRTCManager({
-                socket,
-                userId: data.userId,
-                userName: data.userName,
-                mainWindow,
-                onConnectionStateChange: (state) => {
-                    console.log(`[WebRTC] Connection state: ${state}`);
-                    mainWindow?.webContents.send('webrtc:state-change', { userId: data.userId, state });
-                },
-                onError: (error) => {
-                    console.error('[WebRTC] Error:', error);
-                    mainWindow?.webContents.send('webrtc:error', { userId: data.userId, error: error.message });
-                    endViewSession(data.userId);
-                },
-            });
-            await currentWebRTCManager.initialize();
-        }
         mainWindow?.webContents.send('view:accepted', data);
     });
     socket.on(shared_1.ServerEvents.VIEW_REJECTED, (data) => {
         console.log(`[Socket] View rejected by user: ${data.reason}`);
-        currentWebRTCManager = null;
         mainWindow?.webContents.send('view:rejected', data);
     });
     socket.on(shared_1.ServerEvents.WEBRTC_OFFER_RECEIVED, async (data) => {
         console.log(`[Socket] Received WebRTC offer from ${data.fromId}`);
-        if (currentWebRTCManager) {
-            await currentWebRTCManager.handleOffer(data.offer);
-        }
+        const pending = ensurePending(data.fromId);
+        pending.offer = data.offer;
+        mainWindow?.webContents.send('webrtc:offer', { userId: data.fromId, offer: data.offer });
     });
     socket.on(shared_1.ServerEvents.WEBRTC_ICE_CANDIDATE_RECEIVED, async (data) => {
-        if (currentWebRTCManager) {
-            await currentWebRTCManager.handleIceCandidate(data.candidate);
-        }
+        const pending = ensurePending(data.fromId);
+        pending.ice.push(data.candidate);
+        mainWindow?.webContents.send('webrtc:ice-candidate', { userId: data.fromId, candidate: data.candidate });
     });
     socket.on(shared_1.ServerEvents.VIEW_ENDED, (data) => {
         console.log(`[Socket] View ended by ${data.endedBy}`);
-        if (currentWebRTCManager) {
-            currentWebRTCManager.cleanup();
-            currentWebRTCManager = null;
-        }
         mainWindow?.webContents.send('view:ended', data);
     });
 }
@@ -224,16 +234,6 @@ function endViewSession(userId) {
         return;
     }
     socket.emit(shared_1.ClientEvents.ADMIN_END_VIEW, { userId });
-    if (currentWebRTCManager) {
-        currentWebRTCManager.cleanup();
-        currentWebRTCManager = null;
-    }
     console.log('[Socket] Ended view session');
-}
-/**
- * Get the current remote stream for rendering
- */
-function getRemoteStream() {
-    return currentWebRTCManager?.getRemoteStream() || null;
 }
 //# sourceMappingURL=socket-client.js.map

@@ -13,6 +13,21 @@ export declare function getConnectionStatus(): ConnectionStatus;
  */
 export declare function getUsers(): UserInfo[];
 /**
+ * Consume buffered WebRTC signaling for a user (clears buffer)
+ */
+export declare function consumePendingWebRTC(userId: string): {
+    offer?: RTCSessionDescriptionInit;
+    ice: RTCIceCandidateInit[];
+};
+/**
+ * Send WebRTC answer to the user via signaling server
+ */
+export declare function sendWebRTCAnswer(userId: string, answer: RTCSessionDescriptionInit): void;
+/**
+ * Send WebRTC ICE candidate to the user via signaling server
+ */
+export declare function sendWebRTCIceCandidate(userId: string, candidate: RTCIceCandidateInit): void;
+/**
  * Connect to the signaling server as admin
  */
 export declare function connectToServer(config: ServerConfig, adminData: AdminRegistrationData): void;
@@ -36,8 +51,4 @@ export declare function isConnected(): boolean;
  * Admin ends the view session
  */
 export declare function endViewSession(userId: string): void;
-/**
- * Get the current remote stream for rendering
- */
-export declare function getRemoteStream(): MediaStream | null;
 //# sourceMappingURL=socket-client.d.ts.map

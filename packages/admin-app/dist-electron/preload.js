@@ -59,6 +59,23 @@ electron_1.contextBridge.exposeInMainWorld('electronAPI', {
             electron_1.ipcRenderer.removeListener('webrtc:stream-ready', handler);
         };
     },
+    onWebRTCOffer: (callback) => {
+        const handler = (_event, data) => callback(data);
+        electron_1.ipcRenderer.on('webrtc:offer', handler);
+        return () => {
+            electron_1.ipcRenderer.removeListener('webrtc:offer', handler);
+        };
+    },
+    onWebRTCIceCandidate: (callback) => {
+        const handler = (_event, data) => callback(data);
+        electron_1.ipcRenderer.on('webrtc:ice-candidate', handler);
+        return () => {
+            electron_1.ipcRenderer.removeListener('webrtc:ice-candidate', handler);
+        };
+    },
+    consumePendingWebRTC: (userId) => electron_1.ipcRenderer.invoke('webrtc:consume-pending', userId),
+    sendWebRTCAnswer: (userId, answer) => electron_1.ipcRenderer.invoke('webrtc:send-answer', { userId, answer }),
+    sendWebRTCIceCandidate: (userId, candidate) => electron_1.ipcRenderer.invoke('webrtc:send-ice-candidate', { userId, candidate }),
     onWebRTCStateChange: (callback) => {
         const handler = (_event, data) => callback(data);
         electron_1.ipcRenderer.on('webrtc:state-change', handler);

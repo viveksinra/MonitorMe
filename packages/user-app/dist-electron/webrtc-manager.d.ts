@@ -11,8 +11,12 @@ export declare class UserWebRTCManager {
     private onConnectionStateChange;
     private onError;
     private webrtcWindow;
+    private static localPageUrl;
+    private static localPageServerStarting;
     constructor(config: WebRTCManagerConfig);
+    private static ensureLocalWebRTCPageUrl;
     startScreenShare(): Promise<void>;
+    private injectWebRTCCode;
     private setupWebRTCHandlers;
     handleAnswer(answer: RTCSessionDescriptionInit): Promise<void>;
     handleIceCandidate(candidate: RTCIceCandidateInit): Promise<void>;

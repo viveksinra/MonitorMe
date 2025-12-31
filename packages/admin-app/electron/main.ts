@@ -17,7 +17,9 @@ import {
   requestViewUser,
   setMainWindow,
   endViewSession,
-  getRemoteStream,
+  consumePendingWebRTC,
+  sendWebRTCIceCandidate,
+  sendWebRTCAnswer,
 } from './socket-client';
 
 // Initialize electron-store
@@ -111,7 +113,22 @@ function setupIpcHandlers(): void {
   });
 
   ipcMain.handle('view:get-stream', (): MediaStream | null => {
-    return getRemoteStream();
+    // WebRTC runs in the renderer now; keep for backward compatibility.
+    return null;
+  });
+
+  // WebRTC signaling pass-through (renderer -> main -> socket)
+  ipcMain.handle('webrtc:send-answer', (_event, data: { userId: string; answer: RTCSessionDescriptionInit }): void => {
+    sendWebRTCAnswer(data.userId, data.answer);
+  });
+
+  ipcMain.handle('webrtc:send-ice-candidate', (_event, data: { userId: string; candidate: RTCIceCandidateInit }): void => {
+    sendWebRTCIceCandidate(data.userId, data.candidate);
+  });
+
+  // Allow renderer to fetch any buffered offer/ICE that arrived before UI mounted
+  ipcMain.handle('webrtc:consume-pending', (_event, userId: string): { offer?: RTCSessionDescriptionInit; ice: RTCIceCandidateInit[] } => {
+    return consumePendingWebRTC(userId);
   });
 }
 

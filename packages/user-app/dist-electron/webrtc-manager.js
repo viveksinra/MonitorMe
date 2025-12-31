@@ -35,6 +35,7 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.UserWebRTCManager = void 0;
 const electron_1 = require("electron");
+const http_1 = require("http");
 const shared_1 = require("@monitor-me/shared");
 const path = __importStar(require("path"));
 class UserWebRTCManager {
@@ -43,11 +44,50 @@ class UserWebRTCManager {
     onConnectionStateChange;
     onError;
     webrtcWindow = null;
+    static localPageUrl = null;
+    static localPageServerStarting = null;
     constructor(config) {
         this.socket = config.socket;
         this.adminId = config.adminId;
         this.onConnectionStateChange = config.onConnectionStateChange;
         this.onError = config.onError;
+    }
+    static ensureLocalWebRTCPageUrl() {
+        if (UserWebRTCManager.localPageUrl) {
+            return Promise.resolve(UserWebRTCManager.localPageUrl);
+        }
+        if (UserWebRTCManager.localPageServerStarting) {
+            return UserWebRTCManager.localPageServerStarting;
+        }
+        UserWebRTCManager.localPageServerStarting = new Promise((resolve, reject) => {
+            const server = (0, http_1.createServer)((req, res) => {
+                const url = req.url || '/';
+                if (url.startsWith('/webrtc')) {
+                    res.writeHead(200, {
+                        'Content-Type': 'text/html; charset=utf-8',
+                        'Cache-Control': 'no-store',
+                    });
+                    // A minimal page. We rely on the preload to expose IPC, and inject the WebRTC code from the main process.
+                    res.end('<!doctype html><html><head><meta charset="utf-8"></head><body>MonitorMe WebRTC</body></html>');
+                    return;
+                }
+                res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
+                res.end('Not Found');
+            });
+            server.on('error', (err) => {
+                reject(err);
+            });
+            server.listen(0, '127.0.0.1', () => {
+                const addr = server.address();
+                if (!addr || typeof addr === 'string') {
+                    reject(new Error('Failed to start local WebRTC page server'));
+                    return;
+                }
+                UserWebRTCManager.localPageUrl = `http://127.0.0.1:${addr.port}/webrtc`;
+                resolve(UserWebRTCManager.localPageUrl);
+            });
+        });
+        return UserWebRTCManager.localPageServerStarting;
     }
     async startScreenShare() {
         try {
@@ -63,27 +103,157 @@ class UserWebRTCManager {
             // Create a hidden window for WebRTC (renderer context has navigator)
             this.webrtcWindow = new electron_1.BrowserWindow({
                 show: false,
+                width: 1,
+                height: 1,
                 webPreferences: {
                     nodeIntegration: false,
                     contextIsolation: true,
+                    sandbox: false,
                     preload: path.join(__dirname, 'webrtc-preload.js'),
                 },
             });
-            // Load a blank page
-            await this.webrtcWindow.loadURL('data:text/html,<!DOCTYPE html><html><body></body></html>');
+            // Grant media permissions
+            this.webrtcWindow.webContents.session.setPermissionRequestHandler((_webContents, permission, callback) => {
+                if (permission === 'media' || permission === 'display-capture') {
+                    callback(true);
+                }
+                else {
+                    callback(false);
+                }
+            });
+            // Load a local http://127.0.0.1 page so Chromium treats it as a secure context and exposes navigator.mediaDevices
+            const localUrl = await UserWebRTCManager.ensureLocalWebRTCPageUrl();
+            await this.webrtcWindow.loadURL(localUrl);
+            // Wait for page to be ready
+            await this.webrtcWindow.webContents.executeJavaScript('document.readyState');
+            // Debug: confirm getUserMedia is available in this context (shows in terminal logs)
+            try {
+                const env = await this.webrtcWindow.webContents.executeJavaScript(`({ href: location.href, origin: location.origin, protocol: location.protocol, hasNavigator: typeof navigator !== 'undefined', hasMediaDevices: !!(navigator && navigator.mediaDevices), getUserMediaType: typeof (navigator && navigator.mediaDevices && navigator.mediaDevices.getUserMedia) })`);
+                console.log('[WebRTC] Hidden window env:', env);
+            }
+            catch (e) {
+                console.warn('[WebRTC] Failed to probe hidden window env:', e);
+            }
             // Set up IPC handlers for WebRTC events
             this.setupWebRTCHandlers();
-            // Send source ID to renderer to create stream and peer connection
-            this.webrtcWindow.webContents.send('webrtc:start', {
-                sourceId: primarySource.id,
-                adminId: this.adminId,
-            });
+            // Inject and execute WebRTC code directly in the page context
+            await this.injectWebRTCCode(primarySource.id);
             console.log('[WebRTC] Screen share started');
         }
         catch (error) {
             this.onError(error);
             await this.cleanup();
         }
+    }
+    async injectWebRTCCode(sourceId) {
+        if (!this.webrtcWindow)
+            return;
+        // Execute WebRTC setup directly in the page context (where navigator exists)
+        await this.webrtcWindow.webContents.executeJavaScript(`
+      (async () => {
+        try {
+          console.log('[WebRTC] Starting screen capture...');
+          
+          const mediaDevices = navigator && navigator.mediaDevices;
+          if (!mediaDevices || typeof mediaDevices.getUserMedia !== 'function') {
+            throw new Error(
+              'getUserMedia is not available in this context. ' +
+              'origin=' + location.origin + ' protocol=' + location.protocol + ' href=' + location.href
+            );
+          }
+
+          // Get screen stream
+          const stream = await mediaDevices.getUserMedia({
+            audio: false,
+            video: {
+              mandatory: {
+                chromeMediaSource: 'desktop',
+                chromeMediaSourceId: '${sourceId}',
+                minWidth: 1280,
+                maxWidth: 1280,
+                minHeight: 720,
+                maxHeight: 720,
+                minFrameRate: 15,
+                maxFrameRate: 30,
+              }
+            }
+          });
+
+          console.log('[WebRTC] Stream captured, creating peer connection...');
+
+          // Create peer connection
+          window.peerConnection = new RTCPeerConnection({
+            iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+          });
+
+          // Add tracks
+          stream.getTracks().forEach(track => {
+            window.peerConnection.addTrack(track, stream);
+          });
+
+          // Store stream for cleanup
+          window.localStream = stream;
+
+          // Set up handlers using exposed IPC
+          window.peerConnection.onicecandidate = (event) => {
+            if (event.candidate) {
+              window.webrtcIpc.sendIceCandidate(event.candidate.toJSON());
+            }
+          };
+
+          window.peerConnection.onconnectionstatechange = () => {
+            const state = window.peerConnection.connectionState;
+            window.webrtcIpc.sendStateChange(state);
+            console.log('[WebRTC] Connection state:', state);
+          };
+
+          // Listen for answer from admin
+          window.webrtcIpc.onAnswer(async (answer) => {
+            try {
+              await window.peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
+              console.log('[WebRTC] Answer received and set');
+            } catch (error) {
+              console.error('[WebRTC] Error setting answer:', error);
+            }
+          });
+
+          // Listen for remote ICE candidates
+          window.webrtcIpc.onRemoteIceCandidate(async (candidate) => {
+            try {
+              await window.peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+            } catch (error) {
+              console.error('[WebRTC] Error adding ICE candidate:', error);
+            }
+          });
+
+          // Listen for cleanup
+          window.webrtcIpc.onCleanup(() => {
+            if (window.localStream) {
+              window.localStream.getTracks().forEach(track => track.stop());
+              window.localStream = null;
+            }
+            if (window.peerConnection) {
+              window.peerConnection.close();
+              window.peerConnection = null;
+            }
+          });
+
+          // Create and send offer
+          const offer = await window.peerConnection.createOffer({
+            offerToReceiveVideo: false,
+            offerToReceiveAudio: false,
+          });
+
+          await window.peerConnection.setLocalDescription(offer);
+          window.webrtcIpc.sendOffer(offer);
+
+          console.log('[WebRTC] Offer created and sent');
+        } catch (error) {
+          console.error('[WebRTC] Error:', error);
+          window.webrtcIpc.sendError(error.message);
+        }
+      })();
+    `);
     }
     setupWebRTCHandlers() {
         if (!this.webrtcWindow)

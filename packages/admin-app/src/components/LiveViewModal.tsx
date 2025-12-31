@@ -10,16 +10,89 @@ export default function LiveViewModal({ userId, userName, onClose }: LiveViewMod
   const videoRef = useRef<HTMLVideoElement>(null);
   const [connectionState, setConnectionState] = useState<string>('connecting');
   const [error, setError] = useState<string | null>(null);
+  const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
+  const remoteStreamRef = useRef<MediaStream | null>(null);
 
   useEffect(() => {
-    // Listen for stream ready event
-    const unsubscribeStreamReady = window.electronAPI.onStreamReady(async (data) => {
-      if (data.userId === userId && videoRef.current) {
-        const stream = await window.electronAPI.getRemoteStream();
-        if (stream) {
+    let isCancelled = false;
+
+    const ensurePeerConnection = (): RTCPeerConnection => {
+      if (peerConnectionRef.current) return peerConnectionRef.current;
+
+      const pc = new RTCPeerConnection({
+        iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
+      });
+
+      pc.onicecandidate = (event) => {
+        if (event.candidate) {
+          window.electronAPI.sendWebRTCIceCandidate(userId, event.candidate.toJSON());
+        }
+      };
+
+      pc.onconnectionstatechange = () => {
+        setConnectionState(pc.connectionState);
+      };
+
+      pc.ontrack = (event) => {
+        if (isCancelled) return;
+        const stream = event.streams?.[0];
+        if (stream && videoRef.current) {
+          remoteStreamRef.current = stream;
           videoRef.current.srcObject = stream;
           setConnectionState('connected');
         }
+      };
+
+      peerConnectionRef.current = pc;
+      return pc;
+    };
+
+    const handleOffer = async (offer: RTCSessionDescriptionInit) => {
+      try {
+        const pc = ensurePeerConnection();
+        setConnectionState('connecting');
+
+        await pc.setRemoteDescription(new RTCSessionDescription(offer));
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+
+        await window.electronAPI.sendWebRTCAnswer(userId, answer);
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        setError(msg);
+      }
+    };
+
+    const handleIce = async (candidate: RTCIceCandidateInit) => {
+      try {
+        const pc = ensurePeerConnection();
+        await pc.addIceCandidate(new RTCIceCandidate(candidate));
+      } catch (e) {
+        // ICE candidates can arrive early; ignore add failures until remote description is set
+      }
+    };
+
+    // Consume any buffered signaling that arrived before modal mounted (prevents race where offer arrives before view:accepted)
+    window.electronAPI.consumePendingWebRTC(userId).then((pending) => {
+      if (isCancelled) return;
+      if (pending.offer) {
+        handleOffer(pending.offer);
+      }
+      if (pending.ice?.length) {
+        pending.ice.forEach((c) => void handleIce(c));
+      }
+    });
+
+    // Also listen for live signaling events
+    const unsubscribeOffer = window.electronAPI.onWebRTCOffer((data) => {
+      if (data.userId === userId) {
+        void handleOffer(data.offer);
+      }
+    });
+
+    const unsubscribeIce = window.electronAPI.onWebRTCIceCandidate((data) => {
+      if (data.userId === userId) {
+        void handleIce(data.candidate);
       }
     });
 
@@ -40,10 +113,21 @@ export default function LiveViewModal({ userId, userName, onClose }: LiveViewMod
     });
 
     return () => {
-      unsubscribeStreamReady();
+      isCancelled = true;
+      unsubscribeOffer();
+      unsubscribeIce();
       unsubscribeStateChange();
       unsubscribeError();
       unsubscribeViewEnded();
+
+      // Cleanup peer connection + stream
+      if (videoRef.current) {
+        videoRef.current.srcObject = null;
+      }
+      remoteStreamRef.current?.getTracks().forEach((t) => t.stop());
+      remoteStreamRef.current = null;
+      peerConnectionRef.current?.close();
+      peerConnectionRef.current = null;
     };
   }, [userId, onClose]);
 

@@ -79,6 +79,33 @@ contextBridge.exposeInMainWorld('electronAPI', {
     };
   },
 
+  onWebRTCOffer: (callback: (data: { userId: string; offer: RTCSessionDescriptionInit }) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: { userId: string; offer: RTCSessionDescriptionInit }) =>
+      callback(data);
+    ipcRenderer.on('webrtc:offer', handler);
+    return () => {
+      ipcRenderer.removeListener('webrtc:offer', handler);
+    };
+  },
+
+  onWebRTCIceCandidate: (callback: (data: { userId: string; candidate: RTCIceCandidateInit }) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: { userId: string; candidate: RTCIceCandidateInit }) =>
+      callback(data);
+    ipcRenderer.on('webrtc:ice-candidate', handler);
+    return () => {
+      ipcRenderer.removeListener('webrtc:ice-candidate', handler);
+    };
+  },
+
+  consumePendingWebRTC: (userId: string): Promise<{ offer?: RTCSessionDescriptionInit; ice: RTCIceCandidateInit[] }> =>
+    ipcRenderer.invoke('webrtc:consume-pending', userId),
+
+  sendWebRTCAnswer: (userId: string, answer: RTCSessionDescriptionInit): Promise<void> =>
+    ipcRenderer.invoke('webrtc:send-answer', { userId, answer }),
+
+  sendWebRTCIceCandidate: (userId: string, candidate: RTCIceCandidateInit): Promise<void> =>
+    ipcRenderer.invoke('webrtc:send-ice-candidate', { userId, candidate }),
+
   onWebRTCStateChange: (callback: (data: { userId: string; state: string }) => void): (() => void) => {
     const handler = (_event: Electron.IpcRendererEvent, data: { userId: string; state: string }) => callback(data);
     ipcRenderer.on('webrtc:state-change', handler);
