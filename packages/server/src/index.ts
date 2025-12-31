@@ -217,8 +217,8 @@ function startServer(): void {
   // Set up socket handlers
   setupSocketHandlers(io);
 
-  // Start listening
-  httpServer.listen(PORT, '0.0.0.0', () => {
+  // Start listening on all interfaces (both IPv4 and IPv6)
+  httpServer.listen(PORT, () => {
     console.log('');
     console.log('═══════════════════════════════════════════════════════');
     console.log('         MonitorMe Signaling Server Started');

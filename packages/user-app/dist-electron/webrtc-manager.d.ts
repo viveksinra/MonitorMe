@@ -6,18 +6,16 @@ interface WebRTCManagerConfig {
     onError: (error: Error) => void;
 }
 export declare class UserWebRTCManager {
-    private peerConnection;
-    private localStream;
     private socket;
     private adminId;
     private onConnectionStateChange;
     private onError;
+    private webrtcWindow;
     constructor(config: WebRTCManagerConfig);
     startScreenShare(): Promise<void>;
+    private setupWebRTCHandlers;
     handleAnswer(answer: RTCSessionDescriptionInit): Promise<void>;
     handleIceCandidate(candidate: RTCIceCandidateInit): Promise<void>;
-    private captureScreen;
-    private setupPeerConnectionHandlers;
     cleanup(): Promise<void>;
     isActive(): boolean;
 }

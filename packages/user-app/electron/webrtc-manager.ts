@@ -1,6 +1,7 @@
-import { desktopCapturer } from 'electron';
+import { desktopCapturer, BrowserWindow } from 'electron';
 import type { Socket } from 'socket.io-client';
 import { ClientEvents } from '@monitor-me/shared';
+import * as path from 'path';
 
 interface WebRTCManagerConfig {
   socket: Socket;
@@ -10,12 +11,11 @@ interface WebRTCManagerConfig {
 }
 
 export class UserWebRTCManager {
-  private peerConnection: RTCPeerConnection | null = null;
-  private localStream: MediaStream | null = null;
   private socket: Socket;
   private adminId: string;
   private onConnectionStateChange: (state: RTCPeerConnectionState) => void;
   private onError: (error: Error) => void;
+  private webrtcWindow: BrowserWindow | null = null;
 
   constructor(config: WebRTCManagerConfig) {
     this.socket = config.socket;
@@ -26,142 +26,122 @@ export class UserWebRTCManager {
 
   async startScreenShare(): Promise<void> {
     try {
-      // Capture screen
-      this.localStream = await this.captureScreen();
-
-      // Create peer connection
-      this.peerConnection = new RTCPeerConnection({
-        iceServers: [
-          { urls: 'stun:stun.l.google.com:19302' }, // STUN server for NAT traversal
-        ],
+      // Get desktop capturer source
+      const sources = await desktopCapturer.getSources({
+        types: ['screen'],
+        thumbnailSize: { width: 1, height: 1 },
       });
 
-      // Add tracks to peer connection
-      this.localStream.getTracks().forEach(track => {
-        this.peerConnection!.addTrack(track, this.localStream!);
+      if (sources.length === 0) {
+        throw new Error('No screen sources available');
+      }
+
+      const primarySource = sources[0];
+
+      // Create a hidden window for WebRTC (renderer context has navigator)
+      this.webrtcWindow = new BrowserWindow({
+        show: false,
+        width: 1,
+        height: 1,
+        webPreferences: {
+          nodeIntegration: false,
+          contextIsolation: true,
+          sandbox: false,
+          preload: path.join(__dirname, 'webrtc-preload.js'),
+        },
       });
 
-      // Set up event handlers
-      this.setupPeerConnectionHandlers();
-
-      // Create and send offer
-      const offer = await this.peerConnection.createOffer({
-        offerToReceiveVideo: false,
-        offerToReceiveAudio: false,
+      // Grant media permissions
+      this.webrtcWindow.webContents.session.setPermissionRequestHandler((webContents, permission, callback) => {
+        if (permission === 'media') {
+          callback(true);
+        } else {
+          callback(false);
+        }
       });
 
-      await this.peerConnection.setLocalDescription(offer);
+      // Load a blank page
+      await this.webrtcWindow.loadURL('data:text/html,<!DOCTYPE html><html><body></body></html>');
 
-      // Send offer to admin via signaling server
-      this.socket.emit(ClientEvents.WEBRTC_OFFER, {
-        targetId: this.adminId,
-        offer: offer,
-      });
+      // Wait for page to be ready
+      await this.webrtcWindow.webContents.executeJavaScript('document.readyState');
 
-      console.log('[WebRTC] Screen share started, offer sent');
+      // Set up IPC handlers for WebRTC events
+      this.setupWebRTCHandlers();
+
+      // Inject and execute WebRTC code directly in the page context
+      await this.injectWebRTCCode(primarySource.id);
+
+      console.log('[WebRTC] Screen share started');
     } catch (error) {
       this.onError(error as Error);
       await this.cleanup();
     }
   }
 
-  async handleAnswer(answer: RTCSessionDescriptionInit): Promise<void> {
-    if (!this.peerConnection) {
-      throw new Error('No peer connection exists');
-    }
+  private setupWebRTCHandlers(): void {
+    if (!this.webrtcWindow) return;
 
-    await this.peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
-    console.log('[WebRTC] Answer received and set');
-  }
+    const { ipcMain } = require('electron');
 
-  async handleIceCandidate(candidate: RTCIceCandidateInit): Promise<void> {
-    if (!this.peerConnection) {
-      throw new Error('No peer connection exists');
-    }
-
-    await this.peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
-  }
-
-  private async captureScreen(): Promise<MediaStream> {
-    const sources = await desktopCapturer.getSources({
-      types: ['screen'],
-      thumbnailSize: { width: 1, height: 1 }, // We don't need thumbnail
+    // Handle WebRTC offer from renderer
+    ipcMain.once('webrtc:offer', (_event: any, offer: RTCSessionDescriptionInit) => {
+      this.socket.emit(ClientEvents.WEBRTC_OFFER, {
+        targetId: this.adminId,
+        offer: offer,
+      });
+      console.log('[WebRTC] Offer sent to admin');
     });
 
-    if (sources.length === 0) {
-      throw new Error('No screen sources available');
-    }
-
-    const primarySource = sources[0];
-
-    // Get screen stream using getUserMedia
-    const stream = await navigator.mediaDevices.getUserMedia({
-      audio: false,
-      video: {
-        mandatory: {
-          chromeMediaSource: 'desktop',
-          chromeMediaSourceId: primarySource.id,
-          minWidth: 1280,
-          maxWidth: 1280,
-          minHeight: 720,
-          maxHeight: 720,
-          minFrameRate: 15,
-          maxFrameRate: 30,
-        },
-      } as any,
+    // Handle ICE candidates from renderer
+    ipcMain.on('webrtc:ice-candidate', (_event: any, candidate: RTCIceCandidateInit) => {
+      this.socket.emit(ClientEvents.WEBRTC_ICE_CANDIDATE, {
+        targetId: this.adminId,
+        candidate: candidate,
+      });
     });
 
-    return stream;
-  }
-
-  private setupPeerConnectionHandlers(): void {
-    if (!this.peerConnection) return;
-
-    // ICE candidate event
-    this.peerConnection.onicecandidate = (event) => {
-      if (event.candidate) {
-        this.socket.emit(ClientEvents.WEBRTC_ICE_CANDIDATE, {
-          targetId: this.adminId,
-          candidate: event.candidate.toJSON(),
-        });
-      }
-    };
-
-    // Connection state change
-    this.peerConnection.onconnectionstatechange = () => {
-      const state = this.peerConnection!.connectionState;
+    // Handle connection state changes from renderer
+    ipcMain.on('webrtc:state-change', (_event: any, state: RTCPeerConnectionState) => {
       console.log(`[WebRTC] Connection state: ${state}`);
       this.onConnectionStateChange(state);
 
       if (state === 'failed' || state === 'disconnected' || state === 'closed') {
         this.cleanup();
       }
-    };
+    });
 
-    // ICE connection state
-    this.peerConnection.oniceconnectionstatechange = () => {
-      console.log(`[WebRTC] ICE state: ${this.peerConnection!.iceConnectionState}`);
-    };
+    // Handle errors from renderer
+    ipcMain.on('webrtc:error', (_event: any, error: string) => {
+      this.onError(new Error(error));
+    });
+  }
+
+  async handleAnswer(answer: RTCSessionDescriptionInit): Promise<void> {
+    if (this.webrtcWindow) {
+      this.webrtcWindow.webContents.send('webrtc:answer', answer);
+      console.log('[WebRTC] Answer sent to renderer');
+    }
+  }
+
+  async handleIceCandidate(candidate: RTCIceCandidateInit): Promise<void> {
+    if (this.webrtcWindow) {
+      this.webrtcWindow.webContents.send('webrtc:remote-ice-candidate', candidate);
+    }
   }
 
   async cleanup(): Promise<void> {
     console.log('[WebRTC] Cleaning up...');
 
-    // Stop all tracks
-    if (this.localStream) {
-      this.localStream.getTracks().forEach(track => track.stop());
-      this.localStream = null;
-    }
-
-    // Close peer connection
-    if (this.peerConnection) {
-      this.peerConnection.close();
-      this.peerConnection = null;
+    // Close and destroy the hidden WebRTC window
+    if (this.webrtcWindow && !this.webrtcWindow.isDestroyed()) {
+      this.webrtcWindow.webContents.send('webrtc:cleanup');
+      this.webrtcWindow.close();
+      this.webrtcWindow = null;
     }
   }
 
   isActive(): boolean {
-    return this.peerConnection !== null &&
-           this.peerConnection.connectionState === 'connected';
+    return this.webrtcWindow !== null && !this.webrtcWindow.isDestroyed();
   }
 }
