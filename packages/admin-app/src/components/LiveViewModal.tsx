@@ -49,6 +49,12 @@ export default function LiveViewModal({ userId, userName, onClose }: LiveViewMod
 
     const handleOffer = async (offer: RTCSessionDescriptionInit) => {
       try {
+        console.log('[LiveView] Received offer:', JSON.stringify(offer));
+        
+        if (!offer || !offer.type || !offer.sdp) {
+          throw new Error(`Invalid offer received: ${JSON.stringify(offer)}`);
+        }
+        
         const pc = ensurePeerConnection();
         setConnectionState('connecting');
 
@@ -59,6 +65,7 @@ export default function LiveViewModal({ userId, userName, onClose }: LiveViewMod
         await window.electronAPI.sendWebRTCAnswer(userId, answer);
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
+        console.error('[LiveView] Error in handleOffer:', msg);
         setError(msg);
       }
     };

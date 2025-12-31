@@ -24,7 +24,7 @@ function ensurePending(userId) {
     const existing = pendingWebRTC.get(userId);
     if (existing)
         return existing;
-    const created = { ice: [] };
+    const created = { offer: undefined, ice: [] };
     pendingWebRTC.set(userId, created);
     return created;
 }

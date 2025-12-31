@@ -238,7 +238,14 @@ export class UserWebRTCManager {
           });
 
           await window.peerConnection.setLocalDescription(offer);
-          window.webrtcIpc.sendOffer(offer);
+          
+          // Send the actual localDescription (fully populated after setLocalDescription)
+          const localDesc = window.peerConnection.localDescription;
+          if (!localDesc) {
+            throw new Error('Local description is null after setLocalDescription');
+          }
+          
+          window.webrtcIpc.sendOffer({ type: localDesc.type, sdp: localDesc.sdp });
 
           console.log('[WebRTC] Offer created and sent');
         } catch (error) {
@@ -256,11 +263,12 @@ export class UserWebRTCManager {
 
     // Handle WebRTC offer from renderer
     ipcMain.once('webrtc:offer', (_event: any, offer: RTCSessionDescriptionInit) => {
+      console.log('[WebRTC] Offer received from renderer:', JSON.stringify({ type: offer.type, sdpLength: offer.sdp?.length }));
       this.socket.emit(ClientEvents.WEBRTC_OFFER, {
         targetId: this.adminId,
         offer: offer,
       });
-      console.log('[WebRTC] Offer sent to admin');
+      console.log('[WebRTC] Offer sent to admin via socket');
     });
 
     // Handle ICE candidates from renderer
