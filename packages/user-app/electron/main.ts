@@ -87,7 +87,7 @@ function createWindow(): void {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: true,
+      sandbox: false, // Disabled to allow preload script to resolve workspace packages
     },
     show: false,
     icon: path.join(__dirname, '../assets/icon.png'),

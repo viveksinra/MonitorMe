@@ -163,9 +163,21 @@ Consent is taken **once during signup**, but visibility is **continuous**.
 
 ## Project Phases
 
+### Phase Completion Status
+
+| Phase | Status | Completion |
+|-------|--------|------------|
+| Phase 1 - Foundation & Consent | ✅ COMPLETED | 100% |
+| Phase 2 - Real-time Communication | ✅ COMPLETED | 100% |
+| Phase 3 - Periodic Screenshot System | ✅ COMPLETED | 100% |
+| Phase 4 - Live Screen Viewing (WebRTC) | ✅ COMPLETED | 100% |
+| Phase 5 - Controls, Safety & Polish | ⏳ PENDING | 0% |
+
 ---
 
-## Phase 1 - Foundation & Consent
+## Phase 1 - Foundation & Consent ✅
+
+### Status: COMPLETED (100%)
 
 ### Goal
 
@@ -197,14 +209,28 @@ Set up the base Electron apps and consent system.
 - Context menu with status, pause/resume, and quit options
 - Tooltip showing current monitoring state
 
+### Completed Features
+
+✅ Monorepo structure with npm workspaces
+✅ Shared package with types, constants, and socket events
+✅ Electron boilerplate for both Admin & User apps
+✅ App configuration with work hours and screenshot intervals
+✅ Consent UI with explicit checkboxes and clear messaging
+✅ Local storage using electron-store
+✅ Tray icon with colored status indicators (Green/Yellow/Red/Gray)
+✅ Context menu with pause/resume and quit options
+✅ **BUG FIX**: Tray menu now properly updates when monitoring state changes
+
 ### Notes
 
-* No screen capture yet
-* Focus on UX clarity and legal transparency
+* Focus on UX clarity and legal transparency achieved
+* All consent mechanisms working properly
 
 ---
 
-## Phase 2 - Local Signaling Server
+## Phase 2 - Real-time Communication ✅
+
+### Status: COMPLETED (100%)
 
 ### Goal
 
@@ -217,14 +243,28 @@ Enable discovery and communication inside LAN.
 * Admin <-> User request messaging
 * Role-based identification (admin vs user)
 
+### Completed Features
+
+✅ Socket.io-based signaling server
+✅ HTTP server for screenshot uploads and retrieval
+✅ User registry system with online/offline status tracking
+✅ Admin and User registration with unique IDs
+✅ Real-time user state synchronization
+✅ Bidirectional messaging between Admin and Users
+✅ Connection status management (Connected/Disconnected/Error states)
+✅ Server displays all network addresses for easy LAN connection
+
 ### Notes
 
-* Server runs only on LAN
+* Server runs only on LAN (port 3000)
 * No cloud or public IP usage
+* Multipart form data parser for screenshot uploads
 
 ---
 
-## Phase 3 - Periodic Screenshot System
+## Phase 3 - Periodic Screenshot System ✅
+
+### Status: COMPLETED (100%)
 
 ### Goal
 
@@ -243,9 +283,30 @@ Implement consent-based screenshot capture.
 * Screenshot timeline view
 * Timestamped entries
 
+### Completed Features
+
+✅ Screen capture using Electron `desktopCapturer` API
+✅ Configurable screenshot interval (default: 15 minutes)
+✅ Work hours enforcement with active days configuration
+✅ Screenshot scheduler with automatic start/stop
+✅ Tray indicator updates during screenshot capture
+✅ Screenshot upload to local server via HTTP POST
+✅ Server-side screenshot storage system with file management
+✅ Screenshot metadata tracking (timestamp, user, machine ID)
+✅ Admin dashboard displays screenshot availability notifications
+✅ Screenshot retrieval API endpoints
+✅ Basic screenshot timeline view (ScreenshotTimeline component)
+
+### Known Limitations
+
+* Screenshot metadata currently stored in-memory (could be enhanced with database persistence)
+* Basic retry mechanism for failed uploads could be improved
+
 ---
 
-## Phase 4 - Live Screen Viewing (WebRTC)
+## Phase 4 - Live Screen Viewing (WebRTC) ✅
+
+### Status: COMPLETED (100%)
 
 ### Goal
 
@@ -265,9 +326,57 @@ Enable admin to view user screens live with awareness.
 * No silent viewing
 * Tray must be Red during live view
 
+### Completed Features
+
+✅ Admin-initiated screen view request system
+✅ User-side view request dialog with accept/reject options
+✅ WebRTC peer connection with native RTCPeerConnection API
+✅ Screen capture at 720p @ 30fps for optimal LAN performance
+✅ Live video rendering in admin app (LiveViewModal component)
+✅ Manual disconnect support from both user and admin
+✅ Tray icon turns RED during active live view session
+✅ Session tracking to prevent multiple admins viewing same user
+✅ WebRTC signaling through Socket.io server
+✅ ICE candidate exchange (trickle ICE)
+✅ Connection state tracking and error handling
+✅ User consent validation before accepting view requests
+✅ ViewRequestDialog shows admin name and warning about tray icon change
+✅ No auto-reject timeout - user must manually accept/reject
+✅ Both parties can end session at any time
+✅ Proper cleanup on disconnect or session end
+
+### Implementation Details
+
+**User App (UserWebRTCManager):**
+- Screen capture using desktopCapturer
+- Creates WebRTC offer with screen stream
+- Handles ICE candidates and connection state changes
+- Automatic cleanup on errors
+
+**Admin App (AdminWebRTCManager):**
+- Receives WebRTC offer from user
+- Creates and sends answer
+- Displays remote video stream in full-screen modal
+- Real-time connection state updates
+
+**Server:**
+- Relays WebRTC signaling messages (offers, answers, ICE candidates)
+- Maintains active session registry
+- Prevents concurrent viewing sessions
+- Notifies both parties on disconnect
+
+### Technical Stack
+
+- Native RTCPeerConnection (no external WebRTC library)
+- Google STUN server (stun:stun.l.google.com:19302)
+- User creates offer (cleaner flow since user has media stream)
+- 720p resolution @ 30fps for balanced quality on LAN
+
 ---
 
-## Phase 5 - Controls, Safety & Polish
+## Phase 5 - Controls, Safety & Polish ⏳
+
+### Status: PENDING (0%)
 
 ### Goal
 
@@ -319,3 +428,98 @@ npm run build
 | `npm run build` | Build all packages |
 | `npm run build:user` | Build User App |
 | `npm run build:admin` | Build Admin App |
+| `npm start` (in packages/server) | Start signaling server |
+| `npm start` (in packages/user-app) | Build and run user app |
+| `npm start` (in packages/admin-app) | Build and run admin app |
+
+---
+
+## Implementation Summary
+
+### ✅ Completed (Phases 1-4)
+
+**Core Functionality:**
+- ✅ Electron-based monorepo with workspaces
+- ✅ Explicit user consent system with checkboxes
+- ✅ Real-time tray icon status indicators
+- ✅ Socket.io signaling server for LAN communication
+- ✅ User registry and connection management
+- ✅ Periodic screenshot capture with work hours enforcement
+- ✅ Screenshot storage and retrieval system
+- ✅ WebRTC-based live screen viewing
+- ✅ User acceptance/rejection of view requests
+- ✅ Session tracking and conflict prevention
+- ✅ Full bidirectional disconnect support
+
+**Technical Achievements:**
+- TypeScript throughout with strict type checking
+- React 18+ with Tailwind CSS for UI
+- Vite build system with CommonJS/ES module compatibility
+- Native WebRTC implementation (no external libraries)
+- Electron IPC with contextBridge for security
+- electron-store for persistent configuration
+
+### ⏳ Remaining (Phase 5)
+
+**Enhancements Needed:**
+- ⏳ Enhanced pause/resume monitoring UI
+- ⏳ Admin session audit logs
+- ⏳ Advanced error handling and auto-reconnect
+- ⏳ Performance optimizations (frame rate controls)
+- ⏳ Admin authentication system
+- ⏳ Database persistence for screenshot metadata
+- ⏳ Screenshot upload retry mechanism
+
+### 🎯 Current State
+
+The MonitorMe application is **functionally complete** for core monitoring tasks. All primary features are working:
+- Users can consent and be monitored
+- Periodic screenshots are captured and stored
+- Admins can view live screens with user awareness
+- All visibility and consent requirements are met
+
+Phase 5 focuses on **production hardening** and **operational safety** for actual office deployment.
+
+---
+
+## Testing the Application
+
+### Starting the System
+
+1. **Start the Signaling Server:**
+   ```bash
+   cd packages/server
+   npm start
+   ```
+   Server will display LAN addresses (e.g., `http://192.168.1.13:3000`)
+
+2. **Start the User App:**
+   ```bash
+   cd packages/user-app
+   npm start
+   ```
+   - Accept consent on first launch
+   - Connect to server using LAN address
+   - Check tray icon for status
+
+3. **Start the Admin App:**
+   ```bash
+   cd packages/admin-app
+   npm start
+   ```
+   - Connect to server using same LAN address
+   - View connected users in dashboard
+
+### Testing Live View
+
+1. In Admin App: Click **"View Screen"** next to a connected user
+2. In User App: Accept or reject the view request dialog
+3. If accepted: Admin sees live video, user's tray icon turns RED
+4. Either party can end the session with **"End Session"** button
+
+### Testing Screenshots
+
+1. Configure work hours in User App settings
+2. Screenshots captured automatically at configured intervals
+3. Admin can view screenshot timeline in dashboard
+4. Screenshots stored in `packages/server/screenshots/`

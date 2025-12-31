@@ -20,7 +20,13 @@
       "Bash(findstr:*)",
       "Bash(set VITE_DEV_SERVER_URL=http://localhost:5175)",
       "Bash(set VITE_DEV_SERVER_URL=http://localhost:5176)",
-      "Bash(npm start)"
+      "Bash(npm start)",
+      "Bash(npm run start:all:*)",
+      "Bash(dir:*)",
+      "Bash(node -e:*)",
+      "Bash(powershell \"Get-Content C:\\\\Users\\\\vivek\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\D--Projects-MonitorMe\\\\tasks\\\\b7af930.output -Tail 40\")",
+      "Bash(curl:*)",
+      "Bash(powershell \"Get-Content C:\\\\Users\\\\vivek\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\D--Projects-MonitorMe\\\\tasks\\\\b7af930.output -Tail 20\")"
     ]
   }
 }
